@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layout 1D: Tags Below Filter Bar</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --background: #1a1610;
+      --foreground: #f0ece5;
+      --border: #3d3226;
+      --card: #262017;
+      --card-foreground: #f0ece5;
+      --muted: #3d3226;
+      --muted-foreground: #b5a48a;
+      --accent: #c4956a;
+      --accent-foreground: #1a1610;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* DESIGN NOTES:
+       - Tags appear as a second row below the status filters
+       - Warm cream/sepia palette matching Ben.Tube aesthetic
+       - Grain texture overlay for old film feel
+       - Filter popover button on the right side of tag row
+    */
+
+    .container { display: flex; min-height: 100vh; position: relative; }
+
+    /* Grain overlay */
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.45;
+      mix-blend-mode: overlay;
+      z-index: 100;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    /* Sidebar - Compact with hover expand */
+    .sidebar {
+      width: 64px;
+      background: rgba(38, 32, 23, 0.5);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0;
+      transition: width 0.3s;
+    }
+    .sidebar:hover { width: 220px; }
+    .sidebar:hover .group-name,
+    .sidebar:hover .group-count { display: block; }
+    .sidebar:hover .logo-text { display: inline; }
+
+    .logo {
+      font-size: 18px;
+      font-weight: bold;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+      margin-bottom: 24px;
+      white-space: nowrap;
+    }
+    .logo-icon { color: var(--foreground); }
+    .logo-accent { color: var(--accent); }
+    .logo-text { display: none; }
+
+    .groups-section {
+      flex: 1;
+      width: 100%;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
+    .group-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 4px;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .sidebar:hover .group-item { justify-content: flex-start; }
+    .group-item:hover { background: var(--muted); }
+    .group-item.active {
+      background: rgba(196, 149, 106, 0.15);
+      color: var(--accent);
+    }
+    .group-icon { font-size: 18px; flex-shrink: 0; }
+    .group-name { display: none; font-size: 13px; flex: 1; }
+    .group-count {
+      display: none;
+      font-size: 11px;
+      color: var(--muted-foreground);
+    }
+
+    .sidebar-footer {
+      padding: 12px 8px;
+      width: 100%;
+    }
+    .add-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--muted-foreground);
+      cursor: pointer;
+      margin: 0 auto;
+      transition: all 0.15s;
+    }
+    .sidebar:hover .add-btn { width: 100%; }
+    .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+    .group-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .video-count {
+      font-size: 13px;
+      color: var(--muted-foreground);
+      font-weight: normal;
+    }
+    .header-spacer { flex: 1; }
+    .search-box {
+      padding: 8px 14px;
+      padding-left: 36px;
+      border-radius: 8px;
+      background: var(--background);
+      border: 1px solid var(--border);
+      color: var(--foreground);
+      width: 260px;
+      font-size: 13px;
+      position: relative;
+    }
+    .search-box:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(196, 149, 106, 0.2);
+    }
+    .search-wrapper {
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-foreground);
+      font-size: 14px;
+    }
+    .view-toggle {
+      display: flex;
+      background: var(--muted);
+      border-radius: 6px;
+      padding: 2px;
+    }
+    .view-btn {
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--muted-foreground);
+      transition: all 0.15s;
+    }
+    .view-btn:hover { color: var(--foreground); }
+    .view-btn.active { background: var(--card); color: var(--foreground); }
+    .sort-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--muted-foreground);
+    }
+    .sort-btn:hover { color: var(--foreground); border-color: var(--accent); }
+
+    /* Filter bar - Status filters */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(38, 32, 23, 0.5);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .filter-chip {
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-size: 12px;
+      background: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--muted-foreground);
+    }
+    .filter-chip:hover { background: var(--card); color: var(--foreground); }
+    .filter-chip.active {
+      background: var(--accent);
+      color: var(--accent-foreground);
+    }
+
+    /* Tags bar - Second row */
+    .tags-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--background);
+      border-bottom: 1px solid var(--border);
+    }
+    .tags-label {
+      font-size: 11px;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 8px;
+    }
+    .tag {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      color: var(--muted-foreground);
+    }
+    .tag:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .tag.active {
+      background: rgba(196, 149, 106, 0.15);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .tag .check {
+      font-size: 10px;
+      opacity: 0;
+    }
+    .tag.active .check { opacity: 1; }
+
+    .tags-spacer { flex: 1; }
+
+    /* Filter popover button */
+    .filter-popover-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: var(--muted);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted-foreground);
+      transition: all 0.15s;
+    }
+    .filter-popover-btn:hover { border-color: var(--accent); color: var(--foreground); }
+    .filter-popover-btn.has-filters {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .filter-badge {
+      background: var(--accent);
+      color: var(--accent-foreground);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    /* Filter popover */
+    .filter-popover-container {
+      position: relative;
+    }
+    .filter-popover {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      width: 280px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 50;
+    }
+    .filter-section {
+      margin-bottom: 16px;
+    }
+    .filter-section:last-child { margin-bottom: 0; }
+    .filter-section-label {
+      font-size: 11px;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .range-inputs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .range-input {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--background);
+      border: 1px solid var(--border);
+      color: var(--foreground);
+      font-size: 12px;
+    }
+    .range-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .range-separator { color: var(--muted-foreground); font-size: 12px; }
+    .filter-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .filter-clear {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted-foreground);
+      cursor: pointer;
+    }
+    .filter-clear:hover { color: var(--foreground); border-color: var(--accent); }
+    .filter-apply {
+      flex: 1;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      background: var(--accent);
+      border: none;
+      color: var(--accent-foreground);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .filter-apply:hover { opacity: 0.9; }
+
+    /* Video grid */
+    .video-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      align-content: start;
+    }
+    @media (max-width: 1400px) { .video-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 1000px) { .video-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Video card */
+    .video-card {
+      background: var(--card);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+    }
+    .video-card:hover {
+      border-color: rgba(196, 149, 106, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .thumbnail {
+      aspect-ratio: 16/9;
+      background: linear-gradient(135deg, var(--muted), var(--card));
+      position: relative;
+    }
+    .duration {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.8);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+    }
+    .progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(0,0,0,0.4);
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+    }
+    .progress-fill.complete { background: #7c9a6e; }
+
+    .quick-actions {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .video-card:hover .quick-actions { opacity: 1; }
+    .quick-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.15s;
+    }
+    .quick-btn:hover { transform: scale(1.1); background: var(--accent); }
+    .quick-btn.play { width: 48px; height: 48px; font-size: 20px; background: var(--accent); }
+
+    .card-body { padding: 12px; }
+    .video-title {
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .channel-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .channel-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .channel-name { font-size: 11px; color: var(--muted-foreground); }
+    .video-meta { font-size: 10px; color: var(--muted-foreground); margin-left: auto; }
+  </style>
+</head>
+<body>
+  <div class="grain"></div>
+
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-icon">Ben.</span><span class="logo-accent logo-text">Ware</span>
+      </div>
+
+      <div class="groups-section">
+        <div class="group-item active">
+          <span class="group-icon">💻</span>
+          <span class="group-name">Tech</span>
+          <span class="group-count">42</span>
+        </div>
+        <div class="group-item">
+          <span class="group-icon">🎮</span>
+          <span class="group-name">Gaming</span>
+          <span class="group-count">28</span>
+        </div>
+        <div class="group-item">
+          <span class="group-icon">🎵</span>
+          <span class="group-name">Music</span>
+          <span class="group-count">35</span>
+        </div>
+        <div class="group-item">
+          <span class="group-icon">📚</span>
+          <span class="group-name">Education</span>
+          <span class="group-count">22</span>
+        </div>
+        <div class="group-item">
+          <span class="group-icon">⏰</span>
+          <span class="group-name">Watch Later</span>
+          <span class="group-count">8</span>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="add-btn">+</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="header">
+        <div class="group-title">
+          💻 Tech
+          <span class="video-count">42 videos</span>
+        </div>
+        <div class="header-spacer"></div>
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-box" placeholder="Search in Tech...">
+        </div>
+        <div class="view-toggle">
+          <div class="view-btn active">▦</div>
+          <div class="view-btn">☰</div>
+        </div>
+        <div class="sort-btn">↓ Newest</div>
+      </div>
+
+      <!-- Status filter bar -->
+      <div class="filter-bar">
+        <div class="filter-chip active">All</div>
+        <div class="filter-chip">Unwatched</div>
+        <div class="filter-chip">In Progress</div>
+        <div class="filter-chip">⏰ Watch Later</div>
+      </div>
+
+      <!-- Tags bar (per-group tags) -->
+      <div class="tags-bar">
+        <span class="tags-label">Tags</span>
+        <div class="tag active">
+          <span class="check">✓</span>
+          React
+        </div>
+        <div class="tag active">
+          <span class="check">✓</span>
+          TypeScript
+        </div>
+        <div class="tag">
+          <span class="check">✓</span>
+          DevOps
+        </div>
+        <div class="tag">
+          <span class="check">✓</span>
+          AI/ML
+        </div>
+        <div class="tag">
+          <span class="check">✓</span>
+          System Design
+        </div>
+
+        <div class="tags-spacer"></div>
+
+        <div class="filter-popover-container">
+          <div class="filter-popover-btn has-filters">
+            ⚙ Filters
+            <span class="filter-badge">2</span>
+          </div>
+
+          <!-- Popover (visible for demo) -->
+          <div class="filter-popover">
+            <div class="filter-section">
+              <div class="filter-section-label">Duration</div>
+              <div class="range-inputs">
+                <input type="text" class="range-input" placeholder="0" value="5">
+                <span class="range-separator">to</span>
+                <input type="text" class="range-input" placeholder="∞" value="30">
+                <span style="font-size: 11px; color: var(--muted-foreground);">min</span>
+              </div>
+            </div>
+            <div class="filter-section">
+              <div class="filter-section-label">Release Date</div>
+              <div class="range-inputs">
+                <input type="text" class="range-input" placeholder="Any" value="Last 7 days">
+              </div>
+            </div>
+            <div class="filter-actions">
+              <button class="filter-clear">Clear</button>
+              <button class="filter-apply">Apply Filters</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-grid">
+        <div class="video-card">
+          <div class="thumbnail">
+            <span class="duration">12:34</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+            <div class="quick-actions">
+              <div class="quick-btn">⏰</div>
+              <div class="quick-btn play">▶</div>
+              <div class="quick-btn">✕</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="video-title">Building a Modern Dashboard with React</div>
+            <div class="channel-row">
+              <div class="channel-avatar"></div>
+              <span class="channel-name">Fireship</span>
+              <span class="video-meta">2h ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="thumbnail">
+            <span class="duration">24:15</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 65%"></div></div>
+            <div class="quick-actions">
+              <div class="quick-btn">⏰</div>
+              <div class="quick-btn play">▶</div>
+              <div class="quick-btn">✕</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="video-title">The Future of AI in 2025</div>
+            <div class="channel-row">
+              <div class="channel-avatar"></div>
+              <span class="channel-name">Two Minute Papers</span>
+              <span class="video-meta">65%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="thumbnail">
+            <span class="duration">8:21</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+            <div class="quick-actions">
+              <div class="quick-btn">⏰</div>
+              <div class="quick-btn play">▶</div>
+              <div class="quick-btn">✕</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="video-title">Why I Switched to Neovim</div>
+            <div class="channel-row">
+              <div class="channel-avatar"></div>
+              <span class="channel-name">ThePrimeagen</span>
+              <span class="video-meta">5h ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="thumbnail">
+            <span class="duration">15:42</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 85%"></div></div>
+            <div class="quick-actions">
+              <div class="quick-btn">⏰</div>
+              <div class="quick-btn play">▶</div>
+              <div class="quick-btn">✕</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="video-title">Complete Guide to CSS Grid</div>
+            <div class="channel-row">
+              <div class="channel-avatar"></div>
+              <span class="channel-name">Kevin Powell</span>
+              <span class="video-meta">85%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card" style="opacity: 0.6;">
+          <div class="thumbnail">
+            <span class="duration">18:30</span>
+            <div class="progress-bar"><div class="progress-fill complete" style="width: 100%"></div></div>
+            <div class="quick-actions">
+              <div class="quick-btn">⏰</div>
+              <div class="quick-btn play">▶</div>
+              <div class="quick-btn">✕</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="video-title">Rust for JavaScript Developers</div>
+            <div class="channel-row">
+              <div class="channel-avatar"></div>
+              <span class="channel-name">No Boilerplate</span>
+              <span class="video-meta">Done</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="video-card">
+          <div class="thumbnail">
+            <span class="duration">11:22</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 22%"></div></div>
+            <div class="quick-actions">
+              <div class="quick-btn">⏰</div>
+              <div class="quick-btn play">▶</div>
+              <div class="quick-btn">✕</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="video-title">Docker Compose Deep Dive</div>
+            <div class="channel-row">
+              <div class="channel-avatar"></div>
+              <span class="channel-name">TechWorld with Nana</span>
+              <span class="video-meta">22%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

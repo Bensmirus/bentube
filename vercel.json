@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/refresh-all",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup",
+      "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/retry-dead-channels",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-playlists",
+      "schedule": "0 2 * * 0"
+    },
+    {
+      "path": "/api/cron/resume-paused-syncs",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

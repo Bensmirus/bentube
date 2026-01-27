@@ -3,25 +3,136 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f4;
+  --foreground: #3d3226;
+  --border: #e3dcd0;
+  --card: #ffffff;
+  --card-foreground: #3d3226;
+  --muted: #f0ece5;
+  --muted-foreground: #78654d;
+  --accent: #c4956a;
+  --accent-foreground: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1a1610;
+    --foreground: #f0ece5;
+    --border: #3d3226;
+    --card: #262017;
+    --card-foreground: #f0ece5;
+    --muted: #3d3226;
+    --muted-foreground: #b5a48a;
+    --accent: #c4956a;
+    --accent-foreground: #1a1610;
   }
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  font-size: 20px; /* Increased from default 16px for larger UI scaling */
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .dark .glass {
+    background: rgba(38, 32, 23, 0.7);
+  }
+}
+
+/* Landing page animations */
+
+/* Subtle pulse glow for accent text */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 0 rgba(196, 149, 106, 0);
+  }
+  50% {
+    opacity: 0.9;
+    text-shadow: 0 0 8px rgba(196, 149, 106, 0.4);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Static grain texture - matches sketch aesthetic */
+.grain-static {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* Grain overlay for feed - subtle multiply blend like the sketch */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  mix-blend-mode: multiply;
+  z-index: 100;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* 3D flip rotation utilities */
+.rotate-x-0 {
+  transform: rotateX(0deg);
+}
+.rotate-x-90 {
+  transform: rotateX(90deg);
+}
+.-rotate-x-90 {
+  transform: rotateX(-90deg);
+}
+
+/* Watch progress shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Progress bar glow pulse */
+@keyframes progress-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(196, 149, 106, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(196, 149, 106, 0.6);
+  }
+}
+
+.animate-progress-glow {
+  animation: progress-glow 2s ease-in-out infinite;
 }
