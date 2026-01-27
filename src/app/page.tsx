@@ -5,33 +5,13 @@ import { useEffect, useState } from 'react'
 import FeedContent from '@/components/FeedContent'
 import LoginContent from '@/components/LoginContent'
 
-const INTRO_LAST_SHOWN_KEY = 'bentube_intro_last_shown'
-const ONE_HOUR = 60 * 60 * 1000
-
 export default function Home() {
   const [user, setUser] = useState<boolean | null>(null)
   const [authError, setAuthError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
 
-  // Check if animation should play (once per hour)
-  const [shouldAnimate] = useState(() => {
-    try {
-      const lastShown = localStorage.getItem(INTRO_LAST_SHOWN_KEY)
-      const now = Date.now()
-      if (!lastShown || (now - parseInt(lastShown, 10)) >= ONE_HOUR) {
-        localStorage.setItem(INTRO_LAST_SHOWN_KEY, String(now))
-        return true
-      }
-      return false
-    } catch {
-      return true // If localStorage fails, show animation
-    }
-  })
-
-  // Animation state
-  const [phase, setPhase] = useState<'typing' | 'glitchFlip' | 'glitchOut' | 'done'>(
-    shouldAnimate ? 'typing' : 'done'
-  )
+  // Animation state - always play animation on page load
+  const [phase, setPhase] = useState<'typing' | 'glitchFlip' | 'glitchOut' | 'done'>('typing')
   const [typedText, setTypedText] = useState('')
   const [showCursor, setShowCursor] = useState(true)
   const [glitchFrame, setGlitchFrame] = useState(0)
