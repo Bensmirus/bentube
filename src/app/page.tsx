@@ -10,8 +10,8 @@ export default function Home() {
   const [authError, setAuthError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
 
-  // Animation state - always play animation on page load
-  const [phase, setPhase] = useState<'typing' | 'glitchFlip' | 'glitchOut' | 'done'>('typing')
+  // Animation state - starts as 'pending', then set based on login status
+  const [phase, setPhase] = useState<'pending' | 'typing' | 'glitchFlip' | 'glitchOut' | 'done'>('pending')
   const [typedText, setTypedText] = useState('')
   const [showCursor, setShowCursor] = useState(true)
   const [glitchFrame, setGlitchFrame] = useState(0)
@@ -21,44 +21,45 @@ export default function Home() {
 
   const fullText = 'Ben.Tube'
 
+  // Check if user has seen animation before (localStorage)
   useEffect(() => {
+    const hasSeenAnimation = localStorage.getItem('hasSeenAnimation') === 'true'
+    if (hasSeenAnimation) {
+      setPhase('done')
+    } else {
+      setPhase('typing')
+    }
+  }, [])
+
+  // Check auth status
+  useEffect(() => {
+    let isMounted = true
+    const supabase = createClient()
+
     const checkAuth = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!isMounted) return
+        setUser(!!session)
         setAuthError(false)
-        const supabase = createClient()
-
-        // Add timeout to prevent infinite loading (8 seconds max)
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Auth check timeout')), 8000)
-        })
-
-        const { data, error } = await Promise.race([
-          supabase.auth.getUser(),
-          timeoutPromise,
-        ])
-
-        if (error) {
-          // AuthSessionMissingError is expected when not logged in
-          if (error.message === 'Auth session missing!') {
-            setUser(false)
-            return
-          }
-          console.error('Auth error:', error)
-          setAuthError(true)
-          return
-        }
-        setUser(!!data.user)
       } catch (err) {
         console.error('Auth check failed:', err)
-        setAuthError(true)
+        if (isMounted) {
+          setAuthError(true)
+        }
       }
     }
+
     checkAuth()
+
+    return () => {
+      isMounted = false
+    }
   }, [retryCount])
 
   // Cursor blinking
   useEffect(() => {
-    if (phase === 'done') return
+    if (phase === 'done' || phase === 'pending') return
     const interval = setInterval(() => {
       setShowCursor(prev => !prev)
     }, 530)
@@ -119,6 +120,7 @@ export default function Home() {
       // End after 12 frames
       if (frame >= 12) {
         clearInterval(glitchInterval)
+        localStorage.setItem('hasSeenAnimation', 'true')
         setPhase('done')
       }
     }, 40)
@@ -191,18 +193,21 @@ export default function Home() {
   }
 
 
+  // Only hide overflow during animation (not during pending/done states)
+  const showingAnimation = phase !== 'done' && phase !== 'pending'
+
   return (
-    <div className={`min-h-screen bg-background relative ${phase !== 'done' ? 'overflow-hidden' : ''}`}>
+    <div className={`min-h-screen bg-background relative ${showingAnimation ? 'overflow-hidden' : ''}`}>
       {/* UNDERLAYER: Feed or Login content - always visible when done or fading in */}
       <div
-        className={phase === 'done' ? '' : 'absolute inset-0 z-0'}
-        style={{ opacity: phase === 'done' ? 1 : underlayOpacity }}
+        className={!showingAnimation ? '' : 'absolute inset-0 z-0'}
+        style={{ opacity: !showingAnimation ? 1 : underlayOpacity }}
       >
         {user ? <FeedContent /> : <LoginContent />}
       </div>
 
-      {/* LANDING LAYER */}
-      {phase !== 'done' && (
+      {/* LANDING LAYER - only show animation for non-logged-in users */}
+      {phase !== 'done' && phase !== 'pending' && (
         <div
           className="absolute inset-0 z-10 bg-background flex items-center justify-center"
           style={{ opacity: exitOpacity }}
