@@ -21,7 +21,6 @@ export async function stageVideo(
     duration: string | null
     durationSeconds: number | null
     isShort: boolean
-    description: string | null
     publishedAt: string | null
   }
 ): Promise<string | null> {
@@ -37,7 +36,6 @@ export async function stageVideo(
     p_duration: video.duration,
     p_duration_seconds: video.durationSeconds,
     p_is_short: video.isShort,
-    p_description: video.description,
     p_published_at: video.publishedAt,
   } as never)
 
@@ -80,7 +78,6 @@ export async function stageVideos(
     duration: string | null
     durationSeconds: number | null
     isShort: boolean
-    description: string | null
     publishedAt: string | null
   }>,
   sourcePlaylistId?: string
@@ -113,7 +110,6 @@ export async function stageVideos(
       duration: v.duration,
       duration_seconds: v.durationSeconds,
       is_short: v.isShort,
-      description: sanitizeText(v.description),
       published_at: v.publishedAt,
       source_playlist_id: sourcePlaylistId || null,
     }))

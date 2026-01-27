@@ -15,7 +15,6 @@ type VideoData = {
   id: string
   youtube_id: string
   title: string
-  description: string | null
   thumbnail: string | null
   duration_seconds: number | null
   is_short: boolean
@@ -156,7 +155,6 @@ export default function WatchPage() {
             id,
             youtube_id,
             title,
-            description,
             thumbnail,
             duration_seconds,
             is_short,
@@ -192,7 +190,6 @@ export default function WatchPage() {
           id: videoData.id,
           youtube_id: videoData.youtube_id,
           title: videoData.title,
-          description: videoData.description,
           thumbnail: videoData.thumbnail,
           duration_seconds: videoData.duration_seconds,
           is_short: videoData.is_short,
@@ -704,15 +701,6 @@ export default function WatchPage() {
                   </button>
                 </div>
               </div>
-
-              {/* Description */}
-              {video.description && (
-                <div className="bg-muted rounded-lg p-4">
-                  <p className="text-sm text-foreground whitespace-pre-wrap line-clamp-3">
-                    {video.description}
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Right column - Notes */}

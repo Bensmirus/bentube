@@ -14,7 +14,6 @@ export type YouTubeVideo = {
   duration: string | null
   durationSeconds: number | null
   isShort: boolean
-  description: string | null
   publishedAt: string | null
 }
 

@@ -351,7 +351,6 @@ export async function fetchChannelVideos(
             duration: formatted,
             durationSeconds: seconds,
             isShort: false, // All videos here are non-shorts (shorts are skipped above)
-            description: video.snippet?.description?.substring(0, 500) || null,
             publishedAt: publishedAt || null,
           })
         }

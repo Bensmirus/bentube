@@ -227,7 +227,6 @@ export async function runCronRefresh(activityLevel: ActivityLevel): Promise<Cron
                 duration: v.duration,
                 duration_seconds: v.durationSeconds,
                 is_short: v.isShort,
-                description: v.description,
                 published_at: v.publishedAt,
               }))
 
@@ -463,7 +462,6 @@ export async function runUniformCronRefresh(): Promise<CronResult> {
                 duration: v.duration,
                 duration_seconds: v.durationSeconds,
                 is_short: v.isShort,
-                description: v.description,
                 published_at: v.publishedAt,
               }))
 

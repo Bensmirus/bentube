@@ -322,7 +322,6 @@ export async function fetchPlaylistVideos(
             duration: formatted,
             durationSeconds: seconds,
             isShort,
-            description: video.snippet?.description?.substring(0, 500) || null,
             publishedAt: publishedAt || null,
           })
         }
