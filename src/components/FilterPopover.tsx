@@ -8,8 +8,8 @@ export type DurationFilter = 'any' | 'short' | 'medium' | 'long'
 export type FilterState = {
   dateFilter: DateFilter
   durationFilter: DurationFilter
-  selectedChannelIds: Set<string>
-  channelFilterMode: 'include' | 'exclude'
+  includedChannelIds: Set<string>
+  excludedChannelIds: Set<string>
 }
 
 type Channel = {
@@ -89,31 +89,57 @@ export default function FilterPopover({
     onFilterChange(newFilters)
   }
 
-  const handleChannelToggle = (channelId: string) => {
-    const newSelected = new Set(localFilters.selectedChannelIds)
-    if (newSelected.has(channelId)) {
-      newSelected.delete(channelId)
+  const handleIncludeChannel = (channelId: string) => {
+    const newIncluded = new Set(localFilters.includedChannelIds)
+    const newExcluded = new Set(localFilters.excludedChannelIds)
+
+    // Remove from excluded if present
+    newExcluded.delete(channelId)
+
+    // Toggle included
+    if (newIncluded.has(channelId)) {
+      newIncluded.delete(channelId)
     } else {
-      newSelected.add(channelId)
+      newIncluded.add(channelId)
     }
-    const newFilters = { ...localFilters, selectedChannelIds: newSelected }
-    setLocalFilters(newFilters)
-    onFilterChange(newFilters)
-  }
 
-  const handleSelectAllChannels = () => {
     const newFilters = {
       ...localFilters,
-      selectedChannelIds: new Set<string>(),
+      includedChannelIds: newIncluded,
+      excludedChannelIds: newExcluded
     }
     setLocalFilters(newFilters)
     onFilterChange(newFilters)
   }
 
-  const handleToggleChannelMode = () => {
+  const handleExcludeChannel = (channelId: string) => {
+    const newIncluded = new Set(localFilters.includedChannelIds)
+    const newExcluded = new Set(localFilters.excludedChannelIds)
+
+    // Remove from included if present
+    newIncluded.delete(channelId)
+
+    // Toggle excluded
+    if (newExcluded.has(channelId)) {
+      newExcluded.delete(channelId)
+    } else {
+      newExcluded.add(channelId)
+    }
+
     const newFilters = {
       ...localFilters,
-      channelFilterMode: localFilters.channelFilterMode === 'include' ? 'exclude' as const : 'include' as const,
+      includedChannelIds: newIncluded,
+      excludedChannelIds: newExcluded
+    }
+    setLocalFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
+  const handleClearChannelFilters = () => {
+    const newFilters = {
+      ...localFilters,
+      includedChannelIds: new Set<string>(),
+      excludedChannelIds: new Set<string>(),
     }
     setLocalFilters(newFilters)
     onFilterChange(newFilters)
@@ -123,8 +149,8 @@ export default function FilterPopover({
     const clearedFilters: FilterState = {
       dateFilter: 'any',
       durationFilter: 'any',
-      selectedChannelIds: new Set(),
-      channelFilterMode: 'include',
+      includedChannelIds: new Set(),
+      excludedChannelIds: new Set(),
     }
     setLocalFilters(clearedFilters)
     onFilterChange(clearedFilters)
@@ -133,7 +159,8 @@ export default function FilterPopover({
   const hasActiveFilters =
     localFilters.dateFilter !== 'any' ||
     localFilters.durationFilter !== 'any' ||
-    localFilters.selectedChannelIds.size > 0
+    localFilters.includedChannelIds.size > 0 ||
+    localFilters.excludedChannelIds.size > 0
 
   // Calculate position
   const style: React.CSSProperties = position
@@ -217,66 +244,58 @@ export default function FilterPopover({
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Channels
               </p>
-              {localFilters.selectedChannelIds.size > 0 && (
+              {(localFilters.includedChannelIds.size > 0 || localFilters.excludedChannelIds.size > 0) && (
                 <button
-                  onClick={handleSelectAllChannels}
+                  onClick={handleClearChannelFilters}
                   className="text-xs text-accent hover:text-accent/80"
                 >
-                  Show all
+                  Clear
                 </button>
               )}
             </div>
-            {/* Include/Exclude Toggle */}
-            {localFilters.selectedChannelIds.size > 0 && (
-              <div className="flex gap-1 mb-2">
-                <button
-                  onClick={handleToggleChannelMode}
-                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                    localFilters.channelFilterMode === 'include'
-                      ? 'bg-accent text-white'
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                >
-                  Include
-                </button>
-                <button
-                  onClick={handleToggleChannelMode}
-                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs transition-all ${
-                    localFilters.channelFilterMode === 'exclude'
-                      ? 'bg-accent text-white'
-                      : 'bg-muted hover:bg-muted/80'
-                  }`}
-                >
-                  Exclude
-                </button>
-              </div>
-            )}
-            {localFilters.selectedChannelIds.size > 0 && (
+            {(localFilters.includedChannelIds.size > 0 || localFilters.excludedChannelIds.size > 0) && (
               <p className="text-xs text-muted-foreground mb-2">
-                {localFilters.channelFilterMode === 'include'
-                  ? `Showing only ${localFilters.selectedChannelIds.size} channel${localFilters.selectedChannelIds.size !== 1 ? 's' : ''}`
-                  : `Hiding ${localFilters.selectedChannelIds.size} channel${localFilters.selectedChannelIds.size !== 1 ? 's' : ''}`
-                }
+                {localFilters.includedChannelIds.size > 0 && `Showing ${localFilters.includedChannelIds.size}`}
+                {localFilters.includedChannelIds.size > 0 && localFilters.excludedChannelIds.size > 0 && ', '}
+                {localFilters.excludedChannelIds.size > 0 && `Hiding ${localFilters.excludedChannelIds.size}`}
               </p>
             )}
             <div className="space-y-1 max-h-48 overflow-y-auto">
               {channels.map((channel) => {
-                const isSelected = localFilters.selectedChannelIds.size === 0 ||
-                  localFilters.selectedChannelIds.has(channel.id)
-                const isFiltering = localFilters.selectedChannelIds.size > 0
+                const isIncluded = localFilters.includedChannelIds.has(channel.id)
+                const isExcluded = localFilters.excludedChannelIds.has(channel.id)
 
                 return (
-                  <button
+                  <div
                     key={channel.id}
-                    onClick={() => handleChannelToggle(channel.id)}
-                    className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-lg text-left transition-all ${
-                      isFiltering && isSelected
-                        ? 'bg-accent/10 border border-accent/30'
-                        : isFiltering && !isSelected
-                        ? 'opacity-50 hover:opacity-75'
-                        : 'hover:bg-muted'
-                    }`}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted transition-all"
                   >
+                    {/* Plus button */}
+                    <button
+                      onClick={() => handleIncludeChannel(channel.id)}
+                      className={`w-5 h-5 flex items-center justify-center rounded transition-all flex-shrink-0 ${
+                        isIncluded
+                          ? 'bg-green-500 text-white'
+                          : 'bg-muted hover:bg-green-500/20 text-muted-foreground hover:text-green-600'
+                      }`}
+                      title="Include only this channel"
+                    >
+                      <span className="text-sm font-bold leading-none">+</span>
+                    </button>
+
+                    {/* Minus button */}
+                    <button
+                      onClick={() => handleExcludeChannel(channel.id)}
+                      className={`w-5 h-5 flex items-center justify-center rounded transition-all flex-shrink-0 ${
+                        isExcluded
+                          ? 'bg-red-500 text-white'
+                          : 'bg-muted hover:bg-red-500/20 text-muted-foreground hover:text-red-600'
+                      }`}
+                      title="Exclude this channel"
+                    >
+                      <span className="text-sm font-bold leading-none">−</span>
+                    </button>
+
                     {channel.thumbnail ? (
                       <img
                         src={channel.thumbnail}
@@ -289,10 +308,7 @@ export default function FilterPopover({
                       </div>
                     )}
                     <span className="text-sm truncate flex-1">{channel.title}</span>
-                    {isFiltering && isSelected && (
-                      <CheckIcon className="w-4 h-4 text-accent flex-shrink-0" />
-                    )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -300,14 +316,6 @@ export default function FilterPopover({
         )}
       </div>
     </div>
-  )
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-    </svg>
   )
 }
 
@@ -371,13 +379,12 @@ export function getFilterParams(filters: FilterState): {
       break
   }
 
-  // Channel filter
-  if (filters.selectedChannelIds.size > 0) {
-    if (filters.channelFilterMode === 'include') {
-      params.channelIds = Array.from(filters.selectedChannelIds)
-    } else {
-      params.excludeChannelIds = Array.from(filters.selectedChannelIds)
-    }
+  // Channel filters
+  if (filters.includedChannelIds.size > 0) {
+    params.channelIds = Array.from(filters.includedChannelIds)
+  }
+  if (filters.excludedChannelIds.size > 0) {
+    params.excludeChannelIds = Array.from(filters.excludedChannelIds)
   }
 
   return params

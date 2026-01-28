@@ -86,8 +86,8 @@ export default function FeedContent() {
   const [filters, setFilters] = useState<FilterState>({
     dateFilter: 'any',
     durationFilter: 'any',
-    selectedChannelIds: new Set(),
-    channelFilterMode: 'include',
+    includedChannelIds: new Set(),
+    excludedChannelIds: new Set(),
   })
   const [groupChannels, setGroupChannels] = useState<{ id: string; title: string; thumbnail: string | null }[]>([])
 
