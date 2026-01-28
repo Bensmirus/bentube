@@ -1,8 +1,9 @@
 'use client'
 
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { formatRelativeTime, formatDuration } from '@/lib/utils'
 import { VideoProgressBar } from './VideoProgressBar'
+import MobileActionSheet from './MobileActionSheet'
 
 export type FeedVideo = {
   id: string
@@ -62,6 +63,7 @@ const VideoCard = memo(function VideoCard({
   onToggleSelection,
 }: VideoCardProps) {
   const thumbnailUrl = video.thumbnail || `https://i.ytimg.com/vi/${video.youtube_id}/mqdefault.jpg`
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   // Memoize click handlers to prevent recreation on every render
   const handleWatch = useCallback(() => {
@@ -85,9 +87,31 @@ const VideoCard = memo(function VideoCard({
     onDelete?.(video.id)
   }, [onDelete, video.id])
 
+  const handleMobileMenu = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowMobileMenu(true)
+  }, [])
+
+  const handleMobileToggleWatchLater = useCallback(() => {
+    onToggleWatchLater?.(video.id)
+  }, [onToggleWatchLater, video.id])
+
+  const handleMobileTag = useCallback(() => {
+    // Create a synthetic event for onTag
+    const syntheticEvent = {
+      stopPropagation: () => {},
+      preventDefault: () => {},
+    } as React.MouseEvent
+    onTag?.(video.id, syntheticEvent)
+  }, [onTag, video.id])
+
+  const handleMobileDelete = useCallback(() => {
+    onDelete?.(video.id)
+  }, [onDelete, video.id])
+
   return (
     <div
-      className={`group relative rounded-lg overflow-hidden bg-card border transition-all hover:border-accent/50 ${
+      className={`group relative rounded-none md:rounded-lg overflow-hidden bg-card border-b md:border transition-all hover:border-accent/50 ${
         video.watched ? 'opacity-60' : ''
       } ${isSelected ? 'ring-2 ring-accent border-accent' : ''}`}
     >
@@ -106,14 +130,14 @@ const VideoCard = memo(function VideoCard({
 
         {/* Duration badge */}
         {video.duration_seconds && (
-          <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-mono">
+          <span className="absolute bottom-1.5 md:bottom-2 right-1.5 md:right-2 bg-black/80 text-white text-[11px] md:text-xs px-1.5 py-0.5 rounded font-mono">
             {formatDuration(video.duration_seconds)}
           </span>
         )}
 
         {/* Shorts badge */}
         {video.is_short && !isSelectionMode && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+          <span className="absolute top-1.5 md:top-2 left-1.5 md:left-2 bg-red-500 text-white text-[11px] md:text-xs px-1.5 py-0.5 rounded font-medium">
             SHORT
           </span>
         )}
@@ -122,14 +146,14 @@ const VideoCard = memo(function VideoCard({
         {isSelectionMode && (
           <div className="absolute top-2 left-2 z-10">
             <div
-              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+              className={`w-8 h-8 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                 isSelected
                   ? 'bg-accent border-accent text-white'
                   : 'bg-white/80 border-white/80 hover:border-accent'
               }`}
             >
               {isSelected && (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg className="w-5 h-5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               )}
@@ -139,14 +163,14 @@ const VideoCard = memo(function VideoCard({
 
         {/* Tag indicator - discrete icon in bottom-left corner */}
         {video.has_tags && (
-          <div className="absolute bottom-2 left-2 bg-accent/90 text-white p-1 rounded">
-            <TagIcon className="w-3 h-3" />
+          <div className="absolute bottom-1.5 md:bottom-2 left-1.5 md:left-2 bg-accent/90 text-white p-1 rounded">
+            <TagIcon className="w-3.5 h-3.5 md:w-3 md:h-3" />
           </div>
         )}
 
-        {/* Hover overlay with actions - hidden in selection mode */}
+        {/* Hover overlay with actions - hidden in selection mode and on mobile */}
         {!isSelectionMode && (
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <div className="hidden md:flex absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity items-center justify-center gap-2">
           <button
             onClick={handleToggleWatchLater}
             className={`p-2 rounded-full transition-colors text-xl w-10 h-10 flex items-center justify-center ${
@@ -202,10 +226,10 @@ const VideoCard = memo(function VideoCard({
                 alt={video.channel_title}
                 loading="lazy"
                 decoding="async"
-                className="w-9 h-9 rounded-full"
+                className="w-10 h-10 md:w-9 md:h-9 rounded-full"
               />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+              <div className="w-10 h-10 md:w-9 md:h-9 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
                 {video.channel_title.charAt(0).toUpperCase()}
               </div>
             )}
@@ -227,15 +251,39 @@ const VideoCard = memo(function VideoCard({
               {formatRelativeTime(video.published_at)}
             </p>
           </div>
+
+          {/* Mobile: Action menu button (3-dot menu) */}
+          {!isSelectionMode && (
+            <div className="md:hidden flex-shrink-0">
+              <button
+                onClick={handleMobileMenu}
+                className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-muted rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Watch Later indicator */}
       {video.watch_later && (
-        <div className="absolute top-2 right-2 bg-accent text-white p-1 rounded">
-          <ClockFilledIcon className="w-4 h-4" />
+        <div className="absolute top-2 right-2 bg-accent text-white p-1.5 md:p-1 rounded">
+          <ClockFilledIcon className="w-5 h-5 md:w-4 md:h-4" />
         </div>
       )}
+
+      {/* Mobile Action Sheet */}
+      <MobileActionSheet
+        isOpen={showMobileMenu}
+        onClose={() => setShowMobileMenu(false)}
+        video={video}
+        onToggleWatchLater={handleMobileToggleWatchLater}
+        onTag={onTag ? handleMobileTag : undefined}
+        onDelete={handleMobileDelete}
+      />
     </div>
   )
 })

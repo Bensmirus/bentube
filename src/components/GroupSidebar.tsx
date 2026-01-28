@@ -88,7 +88,7 @@ export default function GroupSidebar({
   return (
     <aside
       className={cn(
-        "group/sidebar fixed left-0 top-0 bottom-16 z-[110] flex flex-col border-r transition-all duration-200 bg-[#fffcf5] dark:bg-[#1a1510] isolate",
+        "group/sidebar fixed left-0 top-0 bottom-16 z-[110] hidden md:flex flex-col border-r transition-all duration-200 bg-[#fffcf5] dark:bg-[#1a1510] isolate",
         isExpanded && "w-[240px]",
         isCollapsed && "w-[72px]",
         isAuto && "w-[72px] hover:w-[240px]"

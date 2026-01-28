@@ -653,32 +653,32 @@ export default function FeedContent() {
 
         {/* Main content area - offset for sidebar */}
         <div className={`pb-16 min-h-screen flex flex-col transition-[margin] duration-200 ${
-          sidebarLockMode === 'open' ? 'ml-[240px]' : 'ml-[72px]'
+          sidebarLockMode === 'open' ? 'md:ml-[240px]' : 'md:ml-[72px]'
         }`}>
           {/* Clean Header */}
           <header className="sticky top-0 z-[105] border-b isolate bg-[#ffffff] dark:bg-[#262017]">
-            <div className="flex h-14 items-center gap-4 px-6">
+            <div className="flex h-12 md:h-14 items-center gap-2 md:gap-4 px-3 md:px-6">
               {/* Current view title */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <span className="text-xl">{selectedGroup?.icon || '🎬'}</span>
-                <h1 className="text-lg font-semibold">
+                <h1 className="text-base md:text-lg font-semibold truncate">
                   {selectedGroup?.name || 'All'}
                 </h1>
               </div>
 
               {/* Spacer */}
-              <div className="flex-1" />
+              <div className="flex-1 min-w-0" />
 
               {/* Search */}
-              <div className="w-80">
+              <div className="w-full max-w-[200px] sm:max-w-[280px] md:w-80">
                 <div className="relative">
-                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <SearchIcon className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="w-full h-9 pl-9 pr-4 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                    className="w-full h-8 md:h-9 pl-8 md:pl-9 pr-3 md:pr-4 rounded-lg border bg-background text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
                   />
                 </div>
               </div>
@@ -687,11 +687,11 @@ export default function FeedContent() {
           </header>
 
           {/* Filter chips */}
-          <div className="sticky top-14 z-[104] border-b px-6 py-2.5 flex items-center gap-2 isolate bg-[#ffffff] dark:bg-[#262017]">
+          <div className="sticky top-12 md:top-14 z-[104] border-b px-3 md:px-6 py-2 md:py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#ffffff] dark:bg-[#262017]">
             <button
               onClick={() => setShowWatchLater(!showWatchLater)}
               disabled={watchLaterCount === 0 && !showWatchLater}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
                 showWatchLater
                   ? 'bg-accent text-white'
                   : watchLaterCount === 0
@@ -699,7 +699,7 @@ export default function FeedContent() {
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              <span>⏰</span>
+              <span className="text-sm md:text-base">⏰</span>
               <span>Watch Later</span>
             </button>
             {/* Quick Play button - only show when a group is selected */}
@@ -731,7 +731,7 @@ export default function FeedContent() {
             <button
               onClick={() => setShowInProgress(!showInProgress)}
               disabled={inProgressCount === 0 && !showInProgress}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
                 showInProgress
                   ? 'bg-accent text-white'
                   : inProgressCount === 0
@@ -744,7 +744,7 @@ export default function FeedContent() {
             </button>
             <button
               onClick={handleToggleFilterPopover}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
                 showFilterPopover || hasActiveFilters
                   ? 'bg-accent text-white'
                   : 'bg-muted text-muted-foreground hover:text-foreground'
@@ -760,7 +760,7 @@ export default function FeedContent() {
             {selectedGroupId && (
               <button
                 onClick={handleToggleTagFilter}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+                className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
                   showTagFilterPopover || selectedTagIds.size > 0
                     ? 'bg-accent text-white'
                     : 'bg-muted text-muted-foreground hover:text-foreground'
@@ -775,12 +775,12 @@ export default function FeedContent() {
             )}
 
             {/* Spacer */}
-            <div className="flex-1" />
+            <div className="flex-1 min-w-4" />
 
             {/* Select button */}
             <button
               onClick={handleToggleSelectionMode}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
                 isSelectionMode
                   ? 'bg-accent text-white'
                   : 'bg-muted text-muted-foreground hover:text-foreground'
@@ -791,7 +791,7 @@ export default function FeedContent() {
             </button>
 
             {/* View toggle */}
-            <div className="flex bg-muted rounded-lg p-0.5">
+            <div className="hidden md:flex bg-muted rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-2.5 py-1.5 rounded-md text-sm transition-colors ${
@@ -816,7 +816,7 @@ export default function FeedContent() {
           </div>
 
           {/* Video Grid */}
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-0 md:p-6">
             {feedError ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div className="text-4xl mb-4">⚠️</div>
@@ -849,7 +849,7 @@ export default function FeedContent() {
             ) : videos.length > 0 ? (
               <>
                 {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                  <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-0 md:gap-4">
                     {videos.map((video) => (
                       <VideoCard
                         key={video.id}
