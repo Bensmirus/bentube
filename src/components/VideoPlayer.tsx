@@ -193,24 +193,24 @@ function VideoPlayerComponent({
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors z-10"
+        className="absolute top-2 md:top-4 right-2 md:right-4 p-2 md:p-2 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors z-10"
         aria-label="Close video"
       >
-        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
       {/* Video title */}
-      <div className="absolute top-4 left-4 right-16 z-10">
-        <h2 className="text-white text-lg font-medium truncate">{title}</h2>
+      <div className="absolute top-2 md:top-4 left-2 md:left-4 right-12 md:right-16 z-10">
+        <h2 className="text-white text-sm md:text-lg font-medium truncate">{title}</h2>
       </div>
 
       {/* Player container */}
-      <div className="w-full max-w-6xl aspect-video mx-4">
+      <div className="w-full max-w-full md:max-w-6xl aspect-video mx-0 md:mx-4">
         <div
           ref={containerRef}
-          className="w-full h-full rounded-lg overflow-hidden shadow-2xl"
+          className="w-full h-full md:rounded-lg overflow-hidden shadow-2xl"
         />
       </div>
 
