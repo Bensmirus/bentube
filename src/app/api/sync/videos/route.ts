@@ -743,7 +743,6 @@ export async function POST(request: NextRequest) {
                   duration: v.duration,
                   durationSeconds: v.durationSeconds,
                   isShort: v.isShort,
-                  description: v.description,
                   publishedAt: v.publishedAt,
                   channelId: channelIdMap.get(v.channelId)!,
                 }))
@@ -761,7 +760,6 @@ export async function POST(request: NextRequest) {
                     duration: video.duration,
                     durationSeconds: video.durationSeconds,
                     isShort: video.isShort,
-                    description: video.description,
                     publishedAt: video.publishedAt,
                   }],
                   playlist.id  // source_playlist_id
@@ -801,8 +799,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine sync outcome for commit/rollback decision
-    // User preference: Rollback everything if sync fails
-    const syncSucceeded = !syncCancelled && !syncFailed && channelsFailed === 0
+    // Allow partial success: commit if at least some channels succeeded
+    // Only rollback if ALL channels failed or critical errors occurred
+    const syncSucceeded = !syncCancelled && !syncFailed && channelsProcessed > 0
     const shouldCommit = syncSucceeded || quotaExhausted // Commit on success OR quota pause (resume later)
 
     let videosCommitted = 0
@@ -847,9 +846,11 @@ export async function POST(request: NextRequest) {
           ? 'Sync failed - all changes rolled back'
           : quotaExhausted
             ? 'Sync paused: quota exhausted - will resume when quota resets'
-            : errors.length > 0
-              ? `${errors.length} channels failed - all changes rolled back`
-              : null,
+            : errors.length > 0 && channelsProcessed > 0
+              ? `Partial success: ${channelsProcessed} channels succeeded, ${channelsFailed} failed`
+              : errors.length > 0
+                ? 'All channels failed'
+                : null,
     } as never)
 
     // Complete progress tracking
@@ -859,9 +860,11 @@ export async function POST(request: NextRequest) {
         ? `Sync failed - rolled back all changes`
         : quotaExhausted
           ? `Sync paused at ${channelsProcessed}/${activeChannels.length} channels (quota exhausted) - ${videosCommitted} videos saved`
-          : errors.length > 0
-            ? `Sync failed with ${errors.length} channel errors - all changes rolled back`
-            : `Synced ${channelsProcessed} channels, added ${videosCommitted} videos`
+          : errors.length > 0 && channelsProcessed > 0
+            ? `Partial success: ${channelsProcessed} channels synced (${videosCommitted} videos), ${channelsFailed} channels failed`
+            : errors.length > 0
+              ? `All channels failed - no videos imported`
+              : `Synced ${channelsProcessed} channels, added ${videosCommitted} videos`
 
     await progress.complete(finalMessage)
 
@@ -905,7 +908,6 @@ async function stageVideosForSync(
     duration: string | null
     durationSeconds: number | null
     isShort: boolean
-    description: string | null
     publishedAt: string | null
   }>
 ): Promise<number> {

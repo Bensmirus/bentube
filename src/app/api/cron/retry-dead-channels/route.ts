@@ -262,7 +262,6 @@ export async function GET(request: NextRequest) {
             duration: v.duration,
             duration_seconds: v.durationSeconds,
             is_short: v.isShort,
-            description: v.description,
             published_at: v.publishedAt,
           }))
 
