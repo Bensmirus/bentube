@@ -50,7 +50,8 @@ type FeedParams = {
   maxDate?: string  // Optional - ISO date string for maximum publish date
   minDuration?: number  // Optional - minimum duration in seconds
   maxDuration?: number  // Optional - maximum duration in seconds
-  channelIds?: string[]  // Optional - filter by specific channel IDs
+  channelIds?: string[]  // Optional - filter by specific channel IDs (include)
+  excludeChannelIds?: string[]  // Optional - exclude specific channel IDs
   limit: number
   offset: number
 }
@@ -81,6 +82,9 @@ async function fetchFeed(params: FeedParams): Promise<FeedResponse> {
   // Channel filter
   if (params.channelIds && params.channelIds.length > 0) {
     searchParams.set('channel_ids', params.channelIds.join(','))
+  }
+  if (params.excludeChannelIds && params.excludeChannelIds.length > 0) {
+    searchParams.set('exclude_channel_ids', params.excludeChannelIds.join(','))
   }
   // Shorts filtering: only show shorts when explicitly requested
   // When viewing main feed (!showShortsOnly), exclude shorts

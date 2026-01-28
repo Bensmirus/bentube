@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
     const maxDate = searchParams.get('max_date') || null
     const channelIdsParam = searchParams.get('channel_ids')
     const channelIds = channelIdsParam ? channelIdsParam.split(',').filter(Boolean) : null
+    const excludeChannelIdsParam = searchParams.get('exclude_channel_ids')
+    const excludeChannelIds = excludeChannelIdsParam ? excludeChannelIdsParam.split(',').filter(Boolean) : null
     const inProgressOnly = searchParams.get('in_progress') === 'true'
     const watchLaterOnly = searchParams.get('watch_later') === 'true'
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
         p_min_date: minDate,
         p_max_date: maxDate,
         p_channel_ids: channelIds,
+        p_exclude_channel_ids: excludeChannelIds,
         p_in_progress_only: inProgressOnly,
         p_watch_later_only: watchLaterOnly,
         p_limit: limit,

@@ -87,6 +87,7 @@ export default function FeedContent() {
     dateFilter: 'any',
     durationFilter: 'any',
     selectedChannelIds: new Set(),
+    channelFilterMode: 'include',
   })
   const [groupChannels, setGroupChannels] = useState<{ id: string; title: string; thumbnail: string | null }[]>([])
 
@@ -146,6 +147,7 @@ export default function FeedContent() {
     minDuration: filterParams.minDuration,
     maxDuration: filterParams.maxDuration,
     channelIds: filterParams.channelIds,
+    excludeChannelIds: filterParams.excludeChannelIds,
     limit: 24, // Load 24 videos per batch (good for grid layouts)
   })
   const { data: inProgressCount } = useInProgressCount(selectedGroupId)

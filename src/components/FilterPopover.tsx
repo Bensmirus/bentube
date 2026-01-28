@@ -9,6 +9,7 @@ export type FilterState = {
   dateFilter: DateFilter
   durationFilter: DurationFilter
   selectedChannelIds: Set<string>
+  channelFilterMode: 'include' | 'exclude'
 }
 
 type Channel = {
@@ -109,11 +110,21 @@ export default function FilterPopover({
     onFilterChange(newFilters)
   }
 
+  const handleToggleChannelMode = () => {
+    const newFilters = {
+      ...localFilters,
+      channelFilterMode: localFilters.channelFilterMode === 'include' ? 'exclude' as const : 'include' as const,
+    }
+    setLocalFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
   const handleClearFilters = () => {
     const clearedFilters: FilterState = {
       dateFilter: 'any',
       durationFilter: 'any',
       selectedChannelIds: new Set(),
+      channelFilterMode: 'include',
     }
     setLocalFilters(clearedFilters)
     onFilterChange(clearedFilters)
@@ -215,6 +226,39 @@ export default function FilterPopover({
                 </button>
               )}
             </div>
+            {/* Include/Exclude Toggle */}
+            {localFilters.selectedChannelIds.size > 0 && (
+              <div className="flex gap-1 mb-2">
+                <button
+                  onClick={handleToggleChannelMode}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                    localFilters.channelFilterMode === 'include'
+                      ? 'bg-accent text-white'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  Include
+                </button>
+                <button
+                  onClick={handleToggleChannelMode}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                    localFilters.channelFilterMode === 'exclude'
+                      ? 'bg-accent text-white'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  Exclude
+                </button>
+              </div>
+            )}
+            {localFilters.selectedChannelIds.size > 0 && (
+              <p className="text-xs text-muted-foreground mb-2">
+                {localFilters.channelFilterMode === 'include'
+                  ? `Showing only ${localFilters.selectedChannelIds.size} channel${localFilters.selectedChannelIds.size !== 1 ? 's' : ''}`
+                  : `Hiding ${localFilters.selectedChannelIds.size} channel${localFilters.selectedChannelIds.size !== 1 ? 's' : ''}`
+                }
+              </p>
+            )}
             <div className="space-y-1 max-h-48 overflow-y-auto">
               {channels.map((channel) => {
                 const isSelected = localFilters.selectedChannelIds.size === 0 ||
@@ -252,11 +296,6 @@ export default function FilterPopover({
                 )
               })}
             </div>
-            {localFilters.selectedChannelIds.size > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {localFilters.selectedChannelIds.size} channel{localFilters.selectedChannelIds.size !== 1 ? 's' : ''} selected
-              </p>
-            )}
           </div>
         )}
       </div>
@@ -279,6 +318,7 @@ export function getFilterParams(filters: FilterState): {
   minDuration?: number
   maxDuration?: number
   channelIds?: string[]
+  excludeChannelIds?: string[]
 } {
   const params: {
     minDate?: string
@@ -286,6 +326,7 @@ export function getFilterParams(filters: FilterState): {
     minDuration?: number
     maxDuration?: number
     channelIds?: string[]
+    excludeChannelIds?: string[]
   } = {}
 
   // Date filter
@@ -332,7 +373,11 @@ export function getFilterParams(filters: FilterState): {
 
   // Channel filter
   if (filters.selectedChannelIds.size > 0) {
-    params.channelIds = Array.from(filters.selectedChannelIds)
+    if (filters.channelFilterMode === 'include') {
+      params.channelIds = Array.from(filters.selectedChannelIds)
+    } else {
+      params.excludeChannelIds = Array.from(filters.selectedChannelIds)
+    }
   }
 
   return params
