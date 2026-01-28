@@ -706,7 +706,7 @@ export default function FeedContent() {
                 onClick={() => setShowMobileGroupSelector(false)}
               />
               {/* Dropdown */}
-              <div className="absolute left-0 right-0 top-12 z-[107] bg-card border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
+              <div className="absolute left-0 right-0 top-12 z-[107] bg-[#ffffff] dark:bg-[#262017] border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
                 {/* All Videos option */}
                 <button
                   onClick={() => {

@@ -207,11 +207,13 @@ function VideoPlayerComponent({
       </div>
 
       {/* Player container */}
-      <div className="w-full max-w-full md:max-w-6xl aspect-video mx-0 md:mx-4">
-        <div
-          ref={containerRef}
-          className="w-full h-full md:rounded-lg overflow-hidden shadow-2xl"
-        />
+      <div className="w-screen md:w-full md:max-w-6xl md:mx-4">
+        <div className="aspect-video">
+          <div
+            ref={containerRef}
+            className="w-full h-full md:rounded-lg overflow-hidden shadow-2xl"
+          />
+        </div>
       </div>
 
       {/* Loading state */}
