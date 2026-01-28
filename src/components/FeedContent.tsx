@@ -82,6 +82,9 @@ export default function FeedContent() {
 
   // Filter popover state
   const [showFilterPopover, setShowFilterPopover] = useState(false)
+
+  // Mobile group selector state
+  const [showMobileGroupSelector, setShowMobileGroupSelector] = useState(false)
   const [filterPosition, setFilterPosition] = useState<{ top: number; left: number } | null>(null)
   const [filters, setFilters] = useState<FilterState>({
     dateFilter: 'any',
@@ -659,13 +662,20 @@ export default function FeedContent() {
           {/* Clean Header */}
           <header className="sticky top-0 z-[105] border-b isolate bg-[#ffffff] dark:bg-[#262017]">
             <div className="flex h-12 md:h-14 items-center gap-2 md:gap-4 px-3 md:px-6">
-              {/* Current view title */}
-              <div className="flex items-center gap-2 md:gap-3">
+              {/* Current view title - clickable on mobile to switch groups */}
+              <button
+                onClick={() => setShowMobileGroupSelector(!showMobileGroupSelector)}
+                className="flex items-center gap-2 md:gap-3 md:pointer-events-none"
+              >
                 <span className="text-xl">{selectedGroup?.icon || '🎬'}</span>
                 <h1 className="text-base md:text-lg font-semibold truncate">
                   {selectedGroup?.name || 'All'}
                 </h1>
-              </div>
+                {/* Dropdown arrow - mobile only */}
+                <svg className="w-4 h-4 text-muted-foreground md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
               {/* Spacer */}
               <div className="flex-1 min-w-0" />
@@ -686,6 +696,59 @@ export default function FeedContent() {
 
             </div>
           </header>
+
+          {/* Mobile Group Selector Dropdown */}
+          {showMobileGroupSelector && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-[106] md:hidden"
+                onClick={() => setShowMobileGroupSelector(false)}
+              />
+              {/* Dropdown */}
+              <div className="absolute left-0 right-0 top-12 z-[107] bg-card border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
+                {/* All Videos option */}
+                <button
+                  onClick={() => {
+                    setSelectedGroupId(null)
+                    setShowMobileGroupSelector(false)
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                    selectedGroupId === null ? 'bg-accent/10 text-accent' : 'hover:bg-muted active:bg-muted'
+                  }`}
+                >
+                  <span className="text-xl">🎬</span>
+                  <span className="flex-1 text-sm font-medium">All Videos</span>
+                  {selectedGroupId === null && (
+                    <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+                {/* Group list */}
+                {groups.map((group) => (
+                  <button
+                    key={group.id}
+                    onClick={() => {
+                      setSelectedGroupId(group.id)
+                      setShowMobileGroupSelector(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                      selectedGroupId === group.id ? 'bg-accent/10 text-accent' : 'hover:bg-muted active:bg-muted'
+                    }`}
+                  >
+                    <span className="text-xl">{group.icon}</span>
+                    <span className="flex-1 text-sm font-medium">{group.name}</span>
+                    {selectedGroupId === group.id && (
+                      <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Filter chips */}
           <div className="sticky top-12 md:top-14 z-[104] border-b px-3 md:px-6 py-2 md:py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#ffffff] dark:bg-[#262017]">
