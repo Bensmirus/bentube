@@ -469,7 +469,8 @@ export default function FeedContent() {
   // Check if any filters are active
   const hasActiveFilters = filters.dateFilter !== 'any' ||
     filters.durationFilter !== 'any' ||
-    filters.selectedChannelIds.size > 0
+    filters.includedChannelIds.size > 0 ||
+    filters.excludedChannelIds.size > 0
 
   // Fetch available tags when group is selected
   useEffect(() => {
