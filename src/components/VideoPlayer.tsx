@@ -48,8 +48,35 @@ function VideoPlayerComponent({
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [, setIsPlaying] = useState(false)
+  const [isLandscape, setIsLandscape] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   const { updateProgress } = useWatchProgressContext()
+
+  // Detect mobile and landscape orientation
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    const checkOrientation = () => {
+      const isLandscapeMode = window.matchMedia('(orientation: landscape)').matches
+      setIsLandscape(isLandscapeMode && window.innerWidth < 1024)
+    }
+
+    checkMobile()
+    checkOrientation()
+
+    window.addEventListener('resize', checkMobile)
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+
+    return () => {
+      window.removeEventListener('resize', checkMobile)
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
 
   // Calculate start position in seconds
   const startSeconds = initialProgressSeconds ?? Math.floor(initialProgress * durationSeconds)
@@ -189,29 +216,43 @@ function VideoPlayerComponent({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Close button */}
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200 ${
+      isLandscape && isMobile ? 'bg-black' : ''
+    }`}>
+      {/* Close button - smaller and more subtle in landscape */}
       <button
         onClick={onClose}
-        className="absolute top-2 md:top-4 right-2 md:right-4 p-2 md:p-2 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors z-10"
+        className={`absolute z-10 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 transition-colors ${
+          isLandscape && isMobile
+            ? 'top-2 right-2 p-1.5'
+            : 'top-2 md:top-4 right-2 md:right-4 p-2 md:p-2'
+        }`}
         aria-label="Close video"
       >
-        <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={`text-white ${isLandscape && isMobile ? 'w-4 h-4' : 'w-5 h-5 md:w-6 md:h-6'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
-      {/* Video title */}
-      <div className="absolute top-2 md:top-4 left-2 md:left-4 right-12 md:right-16 z-10">
-        <h2 className="text-white text-sm md:text-lg font-medium truncate">{title}</h2>
-      </div>
+      {/* Video title - hidden in landscape mobile for more video space */}
+      {!(isLandscape && isMobile) && (
+        <div className="absolute top-2 md:top-4 left-2 md:left-4 right-12 md:right-16 z-10">
+          <h2 className="text-white text-sm md:text-lg font-medium truncate">{title}</h2>
+        </div>
+      )}
 
-      {/* Player container */}
-      <div className="w-screen md:w-full md:max-w-6xl md:mx-4">
-        <div className="aspect-video">
+      {/* Player container - fullscreen in landscape mobile */}
+      <div className={`${
+        isLandscape && isMobile
+          ? 'w-full h-full'
+          : 'w-screen md:w-full md:max-w-6xl md:mx-4'
+      }`}>
+        <div className={isLandscape && isMobile ? 'w-full h-full' : 'aspect-video'}>
           <div
             ref={containerRef}
-            className="w-full h-full md:rounded-lg overflow-hidden shadow-2xl"
+            className={`w-full h-full overflow-hidden shadow-2xl ${
+              isLandscape && isMobile ? '' : 'md:rounded-lg'
+            }`}
           />
         </div>
       </div>

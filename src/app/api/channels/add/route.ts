@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     thumbnail,
     uploadsPlaylistId,
     groupIds,
+    videoLimit: requestedVideoLimit,
   } = await request.json()
 
   if (!channelId || !groupIds || groupIds.length === 0) {
@@ -108,13 +109,25 @@ export async function POST(request: NextRequest) {
       }, { status: 207 }) // 207 Multi-Status indicates partial success
     }
 
-    // Get user's video import limit setting
-    const videoLimitConfig = await getEffectiveVideoLimit(userId)
-
-    // For adding a channel, "new only" mode means import 0 videos
-    // (no point of comparison for a brand new channel)
-    const videoLimit = videoLimitConfig.mode === 'new_only' ? 0 : videoLimitConfig.limit
-    console.log(`[AddChannel] Fetching videos with limit: ${videoLimit} (mode: ${videoLimitConfig.mode}), uploadsPlaylistId: ${uploadsPlaylistId}`)
+    // Use the requested video limit from the modal, or fall back to user's global setting
+    let videoLimit: number
+    if (requestedVideoLimit !== undefined && requestedVideoLimit !== null) {
+      // Use the specific limit chosen in the add channel modal
+      videoLimit = requestedVideoLimit
+      console.log(`[AddChannel] Using requested video limit: ${videoLimit}`)
+    } else if (requestedVideoLimit === null) {
+      // "All videos" selected - use a very high number (no practical limit)
+      videoLimit = 10000
+      console.log(`[AddChannel] Using "all videos" mode (limit: ${videoLimit})`)
+    } else {
+      // Fall back to user's global video import limit setting
+      const videoLimitConfig = await getEffectiveVideoLimit(userId)
+      // For adding a channel, "new only" mode means import 0 videos
+      // (no point of comparison for a brand new channel)
+      videoLimit = videoLimitConfig.mode === 'new_only' ? 0 : (videoLimitConfig.limit ?? 10000)
+      console.log(`[AddChannel] Using global video limit: ${videoLimit} (mode: ${videoLimitConfig.mode})`)
+    }
+    console.log(`[AddChannel] Fetching videos with limit: ${videoLimit}, uploadsPlaylistId: ${uploadsPlaylistId}`)
 
     const result = await fetchChannelVideos(
       youtube,

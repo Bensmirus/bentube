@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getInternalUserId } from '@/lib/supabase/get-user'
 
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    // Get internal user ID (consistent with sync code)
+    const { userId, error: userError } = await getInternalUserId(supabase as never)
+    if (userError || !userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's video limit preference
-    // Note: user.id is the auth UUID, users table has auth_user_id column
+    // Get user's video limit preference using internal ID
     const { data, error } = await supabase
       .from('users')
       .select('video_limit')
-      .eq('auth_user_id', user.id)
+      .eq('id', userId)
       .single()
 
     if (error) {
@@ -35,9 +36,10 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    // Get internal user ID (consistent with sync code)
+    const { userId, error: userError } = await getInternalUserId(supabase as never)
+    if (userError || !userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -50,12 +52,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid limit value' }, { status: 400 })
     }
 
-    // Update user's video limit preference
-    // Note: user.id is the auth UUID, users table has auth_user_id column
+    // Update user's video limit preference using internal ID
     const { error } = await supabase
       .from('users')
       .update({ video_limit: limit })
-      .eq('auth_user_id', user.id)
+      .eq('id', userId)
 
     if (error) {
       console.error('Failed to update video limit:', error)

@@ -33,7 +33,20 @@
 }
 
 html {
-  font-size: 20px; /* Increased from default 16px for larger UI scaling */
+  font-size: 16px; /* Default for small phones */
+}
+
+/* Scale up for larger phones and tablets */
+@media (min-width: 375px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 20px; /* Larger UI scaling for tablets/desktop */
+  }
 }
 
 body {

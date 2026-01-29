@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 export type DateFilter = 'any' | 'today' | 'week' | 'month' | 'year'
 export type DurationFilter = 'any' | 'short' | 'medium' | 'long'
@@ -50,32 +50,44 @@ export default function FilterPopover({
 }: FilterPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null)
   const [localFilters, setLocalFilters] = useState<FilterState>(filters)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Sync local state when props change
   useEffect(() => {
     setLocalFilters(filters)
   }, [filters])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        onClose()
-      }
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+      onClose()
     }
+  }, [onClose])
 
+  useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose()
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
+    // Only add click outside listener for desktop
+    if (!isMobile) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
     document.addEventListener('keydown', handleEscape)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [onClose])
+  }, [onClose, isMobile, handleClickOutside])
 
   const handleDateChange = (value: DateFilter) => {
     const newFilters = { ...localFilters, dateFilter: value }
@@ -162,16 +174,188 @@ export default function FilterPopover({
     localFilters.includedChannelIds.size > 0 ||
     localFilters.excludedChannelIds.size > 0
 
-  // Calculate position
-  const style: React.CSSProperties = position
+  // Calculate position for desktop
+  const style: React.CSSProperties = !isMobile && position
     ? {
         position: 'fixed',
         top: position.top,
-        left: position.left,
+        left: Math.min(position.left, window.innerWidth - 340), // Prevent overflow
         zIndex: 300,
       }
     : {}
 
+  // Mobile: Bottom sheet layout
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/50 z-[300]"
+          onClick={onClose}
+        />
+        {/* Bottom sheet */}
+        <div
+          ref={popoverRef}
+          className="fixed bottom-0 left-0 right-0 z-[301] bg-card rounded-t-2xl shadow-2xl animate-slide-up"
+        >
+          {/* Handle bar */}
+          <div className="flex justify-center pt-3 pb-2">
+            <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-2 border-b">
+            <span className="text-base font-semibold">Filters</span>
+            <div className="flex items-center gap-3">
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className="text-sm text-accent hover:text-accent/80"
+                >
+                  Clear all
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 -mr-2 text-muted-foreground hover:text-foreground"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-5 max-h-[60vh] overflow-y-auto pb-safe">
+            {/* Date Filter */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">
+                Upload date
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {DATE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleDateChange(option.value)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                      localFilters.dateFilter === option.value
+                        ? 'bg-accent text-white'
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Duration Filter */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">
+                Duration
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {DURATION_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleDurationChange(option.value)}
+                    title={option.description}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
+                      localFilters.durationFilter === option.value
+                        ? 'bg-accent text-white'
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Channel Filter */}
+            {channels.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Channels
+                  </p>
+                  {(localFilters.includedChannelIds.size > 0 || localFilters.excludedChannelIds.size > 0) && (
+                    <button
+                      onClick={handleClearChannelFilters}
+                      className="text-sm text-accent hover:text-accent/80"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {(localFilters.includedChannelIds.size > 0 || localFilters.excludedChannelIds.size > 0) && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {localFilters.includedChannelIds.size > 0 && `Showing ${localFilters.includedChannelIds.size}`}
+                    {localFilters.includedChannelIds.size > 0 && localFilters.excludedChannelIds.size > 0 && ', '}
+                    {localFilters.excludedChannelIds.size > 0 && `Hiding ${localFilters.excludedChannelIds.size}`}
+                  </p>
+                )}
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {channels.map((channel) => {
+                    const isIncluded = localFilters.includedChannelIds.has(channel.id)
+                    const isExcluded = localFilters.excludedChannelIds.has(channel.id)
+
+                    return (
+                      <div
+                        key={channel.id}
+                        className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted transition-all"
+                      >
+                        {/* Plus button */}
+                        <button
+                          onClick={() => handleIncludeChannel(channel.id)}
+                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${
+                            isIncluded
+                              ? 'bg-green-500 text-white'
+                              : 'bg-muted hover:bg-green-500/20 text-muted-foreground hover:text-green-600'
+                          }`}
+                          title="Include only this channel"
+                        >
+                          <span className="text-lg font-bold leading-none">+</span>
+                        </button>
+
+                        {/* Minus button */}
+                        <button
+                          onClick={() => handleExcludeChannel(channel.id)}
+                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${
+                            isExcluded
+                              ? 'bg-red-500 text-white'
+                              : 'bg-muted hover:bg-red-500/20 text-muted-foreground hover:text-red-600'
+                          }`}
+                          title="Exclude this channel"
+                        >
+                          <span className="text-lg font-bold leading-none">−</span>
+                        </button>
+
+                        {channel.thumbnail ? (
+                          <img
+                            src={channel.thumbnail}
+                            alt=""
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm">
+                            {channel.title.charAt(0)}
+                          </div>
+                        )}
+                        <span className="text-sm truncate flex-1">{channel.title}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Desktop: Popover layout
   return (
     <div
       ref={popoverRef}

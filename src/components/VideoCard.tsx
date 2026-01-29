@@ -252,12 +252,12 @@ const VideoCard = memo(function VideoCard({
             </p>
           </div>
 
-          {/* Mobile: Action menu button (3-dot menu) */}
+          {/* Mobile: Action menu button (3-dot menu) - 44px minimum touch target */}
           {!isSelectionMode && (
             <div className="md:hidden flex-shrink-0">
               <button
                 onClick={handleMobileMenu}
-                className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-muted rounded-full transition-colors"
+                className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-muted rounded-full transition-colors -mr-1"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>

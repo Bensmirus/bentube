@@ -56,14 +56,14 @@ export default function MobileActionSheet({
             {video.title}
           </h3>
 
-          {/* Actions */}
+          {/* Actions - all buttons have min 48px height for easy tapping */}
           <div className="space-y-1 pb-4">
             <button
               onClick={() => {
                 onToggleWatchLater()
                 onClose()
               }}
-              className="w-full flex items-center gap-4 px-4 py-3.5 rounded-lg hover:bg-muted active:bg-muted transition-colors"
+              className="w-full flex items-center gap-4 px-4 min-h-[52px] rounded-xl hover:bg-muted active:bg-muted transition-colors"
             >
               <span className="text-2xl">⏰</span>
               <span className="flex-1 text-left text-base">
@@ -77,7 +77,7 @@ export default function MobileActionSheet({
                   onTag()
                   onClose()
                 }}
-                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-lg hover:bg-muted active:bg-muted transition-colors"
+                className="w-full flex items-center gap-4 px-4 min-h-[52px] rounded-xl hover:bg-muted active:bg-muted transition-colors"
               >
                 <span className="text-2xl">🏷️</span>
                 <span className="flex-1 text-left text-base">Tag video</span>
@@ -89,17 +89,17 @@ export default function MobileActionSheet({
                 onDelete()
                 onClose()
               }}
-              className="w-full flex items-center gap-4 px-4 py-3.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
+              className="w-full flex items-center gap-4 px-4 min-h-[52px] rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
             >
               <span className="text-2xl">🗑️</span>
               <span className="flex-1 text-left text-base">Delete video</span>
             </button>
           </div>
 
-          {/* Cancel button */}
+          {/* Cancel button - large touch target */}
           <button
             onClick={onClose}
-            className="w-full py-3.5 bg-muted rounded-lg font-medium mb-2"
+            className="w-full min-h-[48px] py-3 bg-muted rounded-xl font-medium mb-2"
           >
             Cancel
           </button>

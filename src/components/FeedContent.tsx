@@ -661,18 +661,18 @@ export default function FeedContent() {
         }`}>
           {/* Clean Header */}
           <header className="sticky top-0 z-[105] border-b isolate bg-[#ffffff] dark:bg-[#262017]">
-            <div className="flex h-12 md:h-14 items-center gap-2 md:gap-4 px-3 md:px-6">
+            <div className="flex h-11 sm:h-12 md:h-14 items-center gap-1.5 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-6">
               {/* Current view title - clickable on mobile to switch groups */}
               <button
                 onClick={() => setShowMobileGroupSelector(!showMobileGroupSelector)}
-                className="flex items-center gap-2 md:gap-3 md:pointer-events-none"
+                className="flex items-center gap-1.5 sm:gap-2 md:gap-3 md:pointer-events-none flex-shrink-0"
               >
-                <span className="text-xl">{selectedGroup?.icon || '🎬'}</span>
-                <h1 className="text-base md:text-lg font-semibold truncate">
+                <span className="text-lg sm:text-xl">{selectedGroup?.icon || '🎬'}</span>
+                <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate max-w-[80px] sm:max-w-[120px] md:max-w-none">
                   {selectedGroup?.name || 'All'}
                 </h1>
                 {/* Dropdown arrow - mobile only */}
-                <svg className="w-4 h-4 text-muted-foreground md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground md:hidden flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -681,7 +681,7 @@ export default function FeedContent() {
               <div className="flex-1 min-w-0" />
 
               {/* Search */}
-              <div className="w-full max-w-[200px] sm:max-w-[280px] md:w-80">
+              <div className="flex-1 max-w-[140px] sm:max-w-[200px] md:max-w-[280px] lg:w-80">
                 <div className="relative">
                   <SearchIcon className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground" />
                   <input
@@ -689,7 +689,7 @@ export default function FeedContent() {
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="w-full h-8 md:h-9 pl-8 md:pl-9 pr-3 md:pr-4 rounded-lg border bg-background text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                    className="w-full h-8 md:h-9 pl-7 sm:pl-8 md:pl-9 pr-2 sm:pr-3 md:pr-4 rounded-lg border bg-background text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
                   />
                 </div>
               </div>
@@ -751,11 +751,11 @@ export default function FeedContent() {
           )}
 
           {/* Filter chips */}
-          <div className="sticky top-12 md:top-14 z-[104] border-b px-3 md:px-6 py-2 md:py-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#ffffff] dark:bg-[#262017]">
+          <div className="sticky top-11 sm:top-12 md:top-14 z-[104] border-b px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-2.5 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#ffffff] dark:bg-[#262017]">
             <button
               onClick={() => setShowWatchLater(!showWatchLater)}
               disabled={watchLaterCount === 0 && !showWatchLater}
-              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] ${
                 showWatchLater
                   ? 'bg-accent text-white'
                   : watchLaterCount === 0
@@ -763,8 +763,8 @@ export default function FeedContent() {
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              <span className="text-sm md:text-base">⏰</span>
-              <span>Watch Later</span>
+              <span className="text-xs sm:text-sm md:text-base">⏰</span>
+              <span>Later</span>
             </button>
             {/* Quick Play button - only show when a group is selected */}
             {selectedGroup && (
@@ -772,7 +772,7 @@ export default function FeedContent() {
                 onClick={() => loadGroupPlaylist(selectedGroup.id, selectedGroup.name)}
                 disabled={isPlaylistLoading}
                 title="Play latest videos"
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-accent text-white hover:bg-accent/90 hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="flex items-center justify-center w-8 h-8 min-w-[32px] rounded-full bg-accent text-white hover:bg-accent/90 hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex-shrink-0"
               >
                 {isPlaylistLoading ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -787,7 +787,7 @@ export default function FeedContent() {
                 onClick={() => loadShuffledPlaylist(videos)}
                 disabled={isPlaylistLoading || videos.length === 0}
                 title="Shuffle play"
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-white hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="flex items-center justify-center w-8 h-8 min-w-[32px] rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-white hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex-shrink-0"
               >
                 <ShuffleIcon className="w-4 h-4" />
               </button>
@@ -795,7 +795,7 @@ export default function FeedContent() {
             <button
               onClick={() => setShowInProgress(!showInProgress)}
               disabled={inProgressCount === 0 && !showInProgress}
-              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] ${
                 showInProgress
                   ? 'bg-accent text-white'
                   : inProgressCount === 0
@@ -803,18 +803,19 @@ export default function FeedContent() {
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              <InProgressIcon className="w-3.5 h-3.5" />
-              <span>In Progress</span>
+              <InProgressIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">In Progress</span>
+              <span className="sm:hidden">Progress</span>
             </button>
             <button
               onClick={handleToggleFilterPopover}
-              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] ${
                 showFilterPopover || hasActiveFilters
                   ? 'bg-accent text-white'
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              <FilterIcon className="w-3.5 h-3.5" />
+              <FilterIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span>Filter</span>
               {hasActiveFilters && (
                 <span className="w-1.5 h-1.5 rounded-full bg-white" />
@@ -824,34 +825,34 @@ export default function FeedContent() {
             {selectedGroupId && (
               <button
                 onClick={handleToggleTagFilter}
-                className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
+                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] ${
                   showTagFilterPopover || selectedTagIds.size > 0
                     ? 'bg-accent text-white'
                     : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <TagIcon className="w-3.5 h-3.5" />
+                <TagIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Tags</span>
                 {selectedTagIds.size > 0 && (
-                  <span className="ml-1 text-xs">({selectedTagIds.size})</span>
+                  <span className="ml-0.5 sm:ml-1 text-[10px] sm:text-xs">({selectedTagIds.size})</span>
                 )}
               </button>
             )}
 
             {/* Spacer */}
-            <div className="flex-1 min-w-4" />
+            <div className="flex-1 min-w-2 sm:min-w-4" />
 
             {/* Select button */}
             <button
               onClick={handleToggleSelectionMode}
-              className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] ${
                 isSelectionMode
                   ? 'bg-accent text-white'
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              <SelectIcon className="w-3.5 h-3.5" />
-              <span>{isSelectionMode ? 'Cancel' : 'Select'}</span>
+              <SelectIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>{isSelectionMode ? 'Done' : 'Select'}</span>
             </button>
 
             {/* View toggle */}

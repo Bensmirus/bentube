@@ -12,9 +12,18 @@
     "lint": "next lint",
     "validate-env": "node scripts/validate-env.js",
     "kill-port": "lsof -ti:3002 | xargs kill -9 2>/dev/null || true",
-    "restart": "npm run kill-port && npm run dev"
+    "restart": "npm run kill-port && npm run dev",
+    "ios:open": "npx cap open ios",
+    "ios:sync": "npx cap sync ios",
+    "ios:run": "npx cap run ios"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/ios": "^8.0.2",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-query": "^5.62.8",
@@ -33,6 +42,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
+    "sharp": "^0.34.5",
     "supabase": "^1.226.4",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

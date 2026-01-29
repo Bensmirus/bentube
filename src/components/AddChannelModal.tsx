@@ -41,11 +41,7 @@ export default function AddChannelModal({
   const [url, setUrl] = useState('')
   const [channelPreview, setChannelPreview] = useState<ChannelPreview | null>(null)
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
-  const [importDate, setImportDate] = useState<string>(() => {
-    const date = new Date()
-    date.setFullYear(date.getFullYear() - 1)
-    return date.toISOString().split('T')[0]
-  })
+  const [videoLimit, setVideoLimit] = useState<number | null>(50) // null means no limit
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState({ current: 0, total: 0, message: '' })
 
@@ -56,10 +52,7 @@ export default function AddChannelModal({
     setSelectedGroupIds([])
     setError(null)
     setProgress({ current: 0, total: 0, message: '' })
-    // Reset date to 1 year ago
-    const date = new Date()
-    date.setFullYear(date.getFullYear() - 1)
-    setImportDate(date.toISOString().split('T')[0])
+    setVideoLimit(50)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -113,7 +106,7 @@ export default function AddChannelModal({
           thumbnail: channelPreview.thumbnail,
           uploadsPlaylistId: channelPreview.uploadsPlaylistId,
           groupIds: selectedGroupIds,
-          importSince: importDate,
+          videoLimit: videoLimit,
         }),
       })
 
@@ -136,7 +129,7 @@ export default function AddChannelModal({
       setError('Failed to add channel')
       setPhase('error')
     }
-  }, [channelPreview, selectedGroupIds, importDate])
+  }, [channelPreview, selectedGroupIds, videoLimit])
 
   const toggleGroup = useCallback((groupId: string) => {
     setSelectedGroupIds((prev) =>
@@ -278,20 +271,25 @@ export default function AddChannelModal({
               )}
             </div>
 
-            {/* Import Date */}
+            {/* Video Limit */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Import videos from
+                Number of videos to import
               </label>
-              <input
-                type="date"
-                value={importDate}
-                onChange={(e) => setImportDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+              <select
+                value={videoLimit === null ? 'all' : videoLimit.toString()}
+                onChange={(e) => setVideoLimit(e.target.value === 'all' ? null : parseInt(e.target.value))}
                 className="w-full h-11 px-4 rounded-xl border bg-muted/30 text-sm outline-none focus:ring-2 focus:ring-accent/50"
-              />
+              >
+                <option value="10">10 videos</option>
+                <option value="25">25 videos</option>
+                <option value="50">50 videos</option>
+                <option value="100">100 videos</option>
+                <option value="200">200 videos</option>
+                <option value="all">All videos</option>
+              </select>
               <p className="text-xs text-muted-foreground mt-2">
-                Only videos published after this date will be imported
+                Most recent videos will be imported first
               </p>
             </div>
 
