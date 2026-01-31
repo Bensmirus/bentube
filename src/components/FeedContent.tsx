@@ -28,6 +28,7 @@ import {
   useDeleteVideo,
   useDeleteMultipleVideos,
 } from '@/hooks/useFeed'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import ConfirmDialog from './ConfirmDialog'
 
 type Tab = 'feed' | 'groups' | 'settings'
@@ -126,6 +127,9 @@ export default function FeedContent() {
     }
     fetchUserId()
   }, [])
+
+  // Real-time sync across devices (invalidates cache when database changes)
+  useRealtimeSync(userId)
 
   // Get filter params from filter state
   const filterParams = useMemo(() => getFilterParams(filters), [filters])
@@ -983,7 +987,7 @@ export default function FeedContent() {
 
         {/* Bulk Action Bar - appears when in selection mode */}
         {isSelectionMode && selectedVideoIds.size > 0 && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] bg-card border rounded-2xl shadow-lg px-4 py-3 flex items-center gap-4">
+          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] bg-[#ffffff] dark:bg-[#262017] border rounded-2xl shadow-lg px-4 py-3 flex items-center gap-4">
             <span className="text-sm font-medium">
               {selectedVideoIds.size} video{selectedVideoIds.size === 1 ? '' : 's'} selected
             </span>

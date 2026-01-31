@@ -15,7 +15,7 @@ export default function QueuePanel({ isOpen, onClose }: QueuePanelProps) {
   const sourceName = playlist.source?.type === 'group' ? playlist.source.groupName : 'Playlist'
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-80 bg-background border-l shadow-lg z-[120] flex flex-col">
+    <div className="fixed right-0 top-0 bottom-0 w-80 isolate bg-[#ffffff] dark:bg-[#262017] border-l shadow-lg z-[120] flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
         <div>
           <h2 className="font-semibold">Queue</h2>

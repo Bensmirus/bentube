@@ -13,6 +13,11 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         border: "var(--border)",
+        card: "var(--card)",
+        "card-foreground": "var(--card-foreground)",
+        muted: "var(--muted)",
+        "muted-foreground": "var(--muted-foreground)",
+        "accent-foreground": "var(--accent-foreground)",
         // Warm cream color palette
         cream: {
           50: '#fefdfb',

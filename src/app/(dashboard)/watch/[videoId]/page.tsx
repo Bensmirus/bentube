@@ -647,7 +647,7 @@ export default function WatchPage() {
                       </button>
                       {/* Tag dialog */}
                       {showTagDialog && (
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-card border rounded-lg shadow-lg p-4 z-20">
+                        <div className="absolute right-0 top-full mt-2 w-80 bg-[#ffffff] dark:bg-[#262017] border rounded-lg shadow-lg p-4 z-20">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-medium">Manage Tags</h4>
                             <button
@@ -796,7 +796,7 @@ export default function WatchPage() {
                       className="absolute inset-0 bg-black/50"
                       onClick={() => setShowTagDialog(false)}
                     />
-                    <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl p-4 animate-slide-up max-h-[70vh] overflow-y-auto">
+                    <div className="absolute bottom-0 left-0 right-0 bg-[#ffffff] dark:bg-[#262017] rounded-t-2xl p-4 animate-slide-up max-h-[70vh] overflow-y-auto">
                       <div className="w-12 h-1 bg-muted rounded-full mx-auto mb-4" />
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-lg">Manage Tags</h4>

@@ -196,7 +196,7 @@ export default function FilterPopover({
         {/* Bottom sheet */}
         <div
           ref={popoverRef}
-          className="fixed bottom-0 left-0 right-0 z-[301] bg-card rounded-t-2xl shadow-2xl animate-slide-up"
+          className="fixed bottom-0 left-0 right-0 z-[301] bg-[#ffffff] dark:bg-[#262017] rounded-t-2xl shadow-2xl animate-slide-up"
         >
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-2">

@@ -43,7 +43,7 @@ export default function MobileActionSheet({
       />
 
       {/* Bottom sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-[301] bg-card rounded-t-2xl shadow-2xl md:hidden animate-slide-up">
+      <div className="fixed bottom-0 left-0 right-0 z-[301] isolate bg-[#ffffff] dark:bg-[#262017] rounded-t-2xl shadow-2xl md:hidden animate-slide-up">
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />

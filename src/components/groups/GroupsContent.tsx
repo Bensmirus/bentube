@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { getInternalUserId } from '@/lib/supabase/get-user'
 import BottomNav from '../BottomNav'
 import GroupCard from './GroupCard'
 import EditGroupModal from './EditGroupModal'
@@ -74,6 +75,7 @@ export default function GroupsContent() {
   const [videoLimit, setVideoLimit] = useState<number | null>(100)
   const [savingLimit, setSavingLimit] = useState(false)
   const [importingChannels, setImportingChannels] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -83,6 +85,11 @@ export default function GroupsContent() {
       if (!user) {
         router.push('/login')
         return
+      }
+      // Get internal user ID for real-time subscriptions
+      const { userId: uid } = await getInternalUserId(supabase)
+      if (uid) {
+        setUserId(uid)
       }
       fetchGroups()
       fetchVideoLimit()
@@ -199,22 +206,38 @@ export default function GroupsContent() {
     return () => stopPolling()
   }, [pollSyncProgress])
 
-  // Real-time subscription for video changes
+  // Real-time subscription for video and group changes (cross-device sync)
   useEffect(() => {
+    if (!userId) return
+
     const supabase = createClient()
 
-    // Subscribe to video INSERT/UPDATE/DELETE events for real-time group count updates
+    // Subscribe to video and channel_groups changes for this user
     const channel = supabase
-      .channel('group-video-changes')
+      .channel(`groups-realtime:${userId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'videos',
+          filter: `user_id=eq.${userId}`,
         },
         () => {
-          // Refresh groups when videos change
+          // Refresh groups when videos change (updates counts)
+          fetchGroups()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'channel_groups',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          // Refresh groups when channel assignments change
           fetchGroups()
         }
       )
@@ -225,7 +248,7 @@ export default function GroupsContent() {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [userId])
 
   const fetchGroups = async () => {
     try {

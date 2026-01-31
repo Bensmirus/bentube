@@ -96,9 +96,8 @@ export default function GroupDropdown({
       {/* Dropdown menu - solid background */}
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-2 w-60 border rounded-xl py-2 animate-in fade-in slide-in-from-top-2 duration-150"
+          className="absolute top-full left-0 mt-2 w-60 border rounded-xl py-2 animate-in fade-in slide-in-from-top-2 duration-150 bg-[#ffffff] dark:bg-[#262017]"
           style={{
-            backgroundColor: 'var(--card)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
             zIndex: 200
           }}
