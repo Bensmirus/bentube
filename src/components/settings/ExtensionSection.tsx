@@ -9,6 +9,7 @@ export default function ExtensionSection() {
   const [revoking, setRevoking] = useState(false)
   const [newApiKey, setNewApiKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [scriptCopied, setScriptCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Check if user has an API key
@@ -92,6 +93,18 @@ export default function ExtensionSection() {
     setNewApiKey(null)
   }
 
+  const copyUserscript = async () => {
+    try {
+      const res = await fetch('/scripts/bentube-userscript.js')
+      const script = await res.text()
+      await navigator.clipboard.writeText(script)
+      setScriptCopied(true)
+      setTimeout(() => setScriptCopied(false), 2000)
+    } catch {
+      setError('Failed to copy userscript')
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -158,9 +171,33 @@ export default function ExtensionSection() {
         </div>
       </div>
 
+      {/* Userscript */}
+      <div className="pt-4 border-t space-y-3">
+        <h3 className="text-sm font-medium">Userscript</h3>
+        <p className="text-sm text-muted-foreground">
+          Copy the script below and paste it into Tampermonkey.
+        </p>
+        <button
+          onClick={copyUserscript}
+          className="px-5 h-10 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors flex items-center gap-2"
+        >
+          {scriptCopied ? (
+            <>
+              <CheckIcon className="w-4 h-4 text-green-500" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <CopyIcon className="w-4 h-4" />
+              Copy Userscript
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Instructions */}
       <div className="pt-4 border-t space-y-3">
-        <h3 className="text-sm font-medium">Setup Instructions</h3>
+        <h3 className="text-sm font-medium">Setup</h3>
         <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
           <li>
             Install{' '}
@@ -172,23 +209,12 @@ export default function ExtensionSection() {
             >
               Tampermonkey
             </a>{' '}
-            browser extension
+            in your browser
           </li>
+          <li>Click Tampermonkey icon → Create new script</li>
+          <li>Delete everything, paste the copied script, save</li>
           <li>Generate an API key above</li>
-          <li>
-            Create a new userscript in Tampermonkey and paste the code from{' '}
-            <a
-              href="https://gist.github.com/bentube/userscript"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              this gist
-            </a>
-          </li>
-          <li>Enter your API key in the userscript settings</li>
-          <li>Visit any YouTube channel or video page</li>
-          <li>Click the BenTube button next to Subscribe</li>
+          <li>On YouTube, click the BenTube button → gear icon → paste your key</li>
         </ol>
       </div>
 
@@ -223,5 +249,40 @@ export default function ExtensionSection() {
         </div>
       )}
     </div>
+  )
+}
+
+function CopyIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  )
+}
+
+function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
   )
 }
