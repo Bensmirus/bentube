@@ -113,6 +113,12 @@ export default function ExtensionSection() {
               <li>Go to YouTube - look for the blue BenTube button</li>
             </ol>
           </div>
+          <button
+            onClick={() => setDownloaded(false)}
+            className="text-xs text-muted-foreground underline hover:text-foreground"
+          >
+            Download again
+          </button>
         </div>
       )}
     </div>
