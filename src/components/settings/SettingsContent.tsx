@@ -77,34 +77,38 @@ export default function SettingsContent() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-6">
-        {/* Section tabs */}
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-150 ${
-                activeSection === section.id
-                  ? 'bg-accent text-white shadow-md'
-                  : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
-              }`}
-            >
-              <span>{section.icon}</span>
-              <span>{section.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+          {/* Sidebar navigation */}
+          <div className="sm:w-48 flex-shrink-0">
+            <div className="grid grid-cols-3 sm:grid-cols-1 gap-2">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`flex flex-col sm:flex-row items-center sm:items-center gap-1 sm:gap-3 px-3 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-150 ${
+                    activeSection === section.id
+                      ? 'bg-accent text-white shadow-md'
+                      : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  <span className="text-base sm:text-sm">{section.icon}</span>
+                  <span className="text-center sm:text-left">{section.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* Section content */}
-        <div className="rounded-2xl border p-6 isolate bg-[#ffffff] dark:bg-[#262017]">
-          {activeSection === 'account' && user && <AccountSection user={user} />}
-          {activeSection === 'import' && <ImportSection />}
-          {activeSection === 'storage' && <StorageSection />}
-          {activeSection === 'extension' && <ExtensionSection />}
-          {activeSection === 'appearance' && <AppearanceSection />}
-          {activeSection === 'billing' && <BillingSection />}
-          {activeSection === 'admin' && isAdmin && <AdminSection />}
+          {/* Section content */}
+          <div className="flex-1 rounded-2xl border p-4 sm:p-6 isolate bg-[#ffffff] dark:bg-[#262017]">
+            {activeSection === 'account' && user && <AccountSection user={user} />}
+            {activeSection === 'import' && <ImportSection />}
+            {activeSection === 'storage' && <StorageSection />}
+            {activeSection === 'extension' && <ExtensionSection />}
+            {activeSection === 'appearance' && <AppearanceSection />}
+            {activeSection === 'billing' && <BillingSection />}
+            {activeSection === 'admin' && isAdmin && <AdminSection />}
+          </div>
         </div>
       </div>
 
