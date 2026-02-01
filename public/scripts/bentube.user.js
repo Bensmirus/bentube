@@ -25,6 +25,7 @@
   // ============================================
 
   const DEFAULT_SERVER_URL = 'https://bentube.app';
+  const DEFAULT_API_KEY = ''; // DO NOT EDIT - Generated automatically
   const STORAGE_KEY_PREFIX = 'bentube_';
   const DEBUG = false;
 
@@ -59,7 +60,7 @@
 
     return {
       serverUrl: serverUrl || DEFAULT_SERVER_URL,
-      apiKey: apiKey || ''
+      apiKey: apiKey || DEFAULT_API_KEY
     };
   }
 
