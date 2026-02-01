@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      3.7.0
+// @version      3.8.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -189,11 +189,31 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
     popup.className = 'bentube-popup';
     popup.innerHTML = '<div class="bentube-popup-header"><span>Add to BenTube</span><button class="bentube-close">&times;</button></div><div class="bentube-popup-content"><div class="bentube-status">Loading...</div></div>';
 
-    const rect = btn.getBoundingClientRect();
-    popup.style.top = (rect.bottom + 8) + 'px';
-    popup.style.left = Math.max(10, rect.left - 130) + 'px';
-
     document.body.appendChild(popup);
+
+    // Position popup - prefer below button, but flip to above if not enough space
+    const btnRect = btn.getBoundingClientRect();
+    const popupHeight = 350; // Approximate max height
+    const popupWidth = 300;
+    const margin = 8;
+
+    let top, left;
+
+    // Check if there's room below
+    if (btnRect.bottom + popupHeight + margin < window.innerHeight) {
+      top = btnRect.bottom + margin;
+    } else {
+      // Position above the button
+      top = Math.max(margin, btnRect.top - popupHeight - margin);
+    }
+
+    // Center horizontally relative to button, but keep in viewport
+    left = btnRect.left + btnRect.width / 2 - popupWidth / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - popupWidth - margin));
+
+    popup.style.top = top + 'px';
+    popup.style.left = left + 'px';
+
     popup.querySelector('.bentube-close').onclick = () => { popup.remove(); popup = null; };
 
     // Close on outside click
@@ -326,7 +346,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   });
 
   function init() {
-    console.log('[BenTube] Script initialized v3.7.0 on:', location.href);
+    console.log('[BenTube] Script initialized v3.8.0 on:', location.href);
     injectStyles();
     createButton();
 
