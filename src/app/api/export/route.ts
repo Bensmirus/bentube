@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getInternalUserId } from '@/lib/supabase/get-user'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()

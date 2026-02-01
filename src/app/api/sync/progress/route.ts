@@ -3,6 +3,8 @@ import { getInternalUserId } from '@/lib/supabase/get-user'
 import { getCurrentSyncProgress, isSyncInProgress } from '@/lib/youtube/sync-progress'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()

@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getInternalUserId } from '@/lib/supabase/get-user'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 // Get all user's subscribed channels
 export async function GET() {
   try {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
+export const dynamic = 'force-dynamic'
+
 // Embed the script template directly since Vercel can't read from public/ filesystem
 // Build timestamp: 2026-02-01T22:30:00Z - force cache invalidation
 const SCRIPT_TEMPLATE = `// ==UserScript==

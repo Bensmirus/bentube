@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getInternalUserId } from '@/lib/supabase/get-user'
 import { generateApiKey, hasApiKey, saveApiKeyHash, revokeApiKey } from '@/lib/auth/api-key'
 
+export const dynamic = 'force-dynamic'
+
 // GET: Check if user has an API key
 export async function GET() {
   try {

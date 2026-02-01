@@ -4,6 +4,8 @@ import { getInternalUserId } from '@/lib/supabase/get-user'
 import { USER_VIDEO_LIMIT, USER_VIDEO_WARNING_THRESHOLD } from '@/lib/constants/limits'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Ben.Tube',
   webDir: 'out',
   server: {
-    url: 'https://bentube-h8oc.vercel.app',
+    url: 'https://ben-tube.com',
     cleartext: true
   },
   ios: {

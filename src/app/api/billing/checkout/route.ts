@@ -61,7 +61,7 @@ export async function POST() {
               },
             },
             product_options: {
-              redirect_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://bentube.app'}/settings?tab=billing&success=true`,
+              redirect_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://ben-tube.com'}/settings?tab=billing&success=true`,
             },
           },
           relationships: {

@@ -3,6 +3,8 @@ import { getInternalUserId } from '@/lib/supabase/get-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET: Get the current user's subscription status
  */

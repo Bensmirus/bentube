@@ -10,7 +10,7 @@ Your web app has been successfully configured as an iOS app! Here's what was set
    - Status Bar control
    - Splash Screen support
    - App Preferences storage
-4. **Server Connection** - The app connects to your live website (https://bentube-h8oc.vercel.app)
+4. **Server Connection** - The app connects to your live website (https://ben-tube.com)
 
 ## How It Works
 
@@ -106,7 +106,7 @@ Apple typically takes 1-2 days to review apps.
 
 - `capacitor.config.ts` - Main Capacitor configuration
 - `ios/` folder - The Xcode project (don't delete this!)
-- App connects to: https://bentube-h8oc.vercel.app
+- App connects to: https://ben-tube.com
 
 ## Need Help?
 
