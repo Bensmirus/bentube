@@ -12,6 +12,10 @@ interface ChannelStats {
 interface StorageStats {
   totalVideos: number
   totalChannels: number
+  limit: number
+  usagePercent: number
+  isNearLimit: boolean
+  isAtLimit: boolean
   channelsBySize: ChannelStats[]
   cleanup: {
     olderThan6Months: number
@@ -131,13 +135,37 @@ export default function StorageSection() {
       </div>
 
       {/* Overview */}
-      <div className="bg-muted/50 rounded-xl p-4">
-        <div className="text-3xl font-bold">
-          {stats.totalVideos.toLocaleString()}
+      <div className={`rounded-xl p-4 ${stats.isAtLimit ? 'bg-red-50 dark:bg-red-900/20' : stats.isNearLimit ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-muted/50'}`}>
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-bold">
+            {stats.totalVideos.toLocaleString()}
+          </span>
+          <span className="text-lg text-muted-foreground">
+            / {stats.limit.toLocaleString()}
+          </span>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground mb-3">
           videos across {stats.totalChannels} channels
         </div>
+
+        {/* Progress bar */}
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className={`h-full transition-all ${stats.isAtLimit ? 'bg-red-500' : stats.isNearLimit ? 'bg-amber-500' : 'bg-accent'}`}
+            style={{ width: `${Math.min(stats.usagePercent * 100, 100)}%` }}
+          />
+        </div>
+
+        {stats.isAtLimit && (
+          <p className="text-sm text-red-600 dark:text-red-400 mt-3">
+            Video limit reached. Remove some videos below to continue syncing.
+          </p>
+        )}
+        {stats.isNearLimit && !stats.isAtLimit && (
+          <p className="text-sm text-amber-600 dark:text-amber-400 mt-3">
+            Approaching the video limit ({Math.round(stats.usagePercent * 100)}% used).
+          </p>
+        )}
       </div>
 
       {/* Quick Cleanup */}

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getInternalUserId } from '@/lib/supabase/get-user'
+import { USER_VIDEO_LIMIT, USER_VIDEO_WARNING_THRESHOLD } from '@/lib/constants/limits'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -89,9 +90,16 @@ export async function GET() {
       .eq('user_id', userId)
       .lt('published_at', twoYearsAgo)
 
+    const videoCount = totalVideos || 0
+    const usagePercent = videoCount / USER_VIDEO_LIMIT
+
     return NextResponse.json({
-      totalVideos: totalVideos || 0,
+      totalVideos: videoCount,
       totalChannels: totalChannels || 0,
+      limit: USER_VIDEO_LIMIT,
+      usagePercent,
+      isNearLimit: usagePercent >= USER_VIDEO_WARNING_THRESHOLD,
+      isAtLimit: videoCount >= USER_VIDEO_LIMIT,
       channelsBySize,
       cleanup: {
         olderThan6Months: olderThan6Months || 0,

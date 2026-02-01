@@ -15,6 +15,7 @@ import {
 import { recordChannelSuccess, recordChannelFailure, getSkippableChannelIds } from '@/lib/youtube/channel-health'
 import { parseYouTubeError, type YouTubeError } from '@/lib/youtube/utils'
 import { getEffectiveVideoLimit } from '@/lib/user/video-limit'
+import { USER_VIDEO_LIMIT } from '@/lib/constants/limits'
 import {
   stageVideos,
   stageVideoChannelsBulk,
@@ -54,6 +55,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     userId = uid
+
+    // Check global video limit before starting
+    const { count: currentVideoCount } = await admin
+      .from('videos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    if ((currentVideoCount || 0) >= USER_VIDEO_LIMIT) {
+      return NextResponse.json(
+        {
+          error: `You've reached the video limit (${USER_VIDEO_LIMIT.toLocaleString()} videos). Please remove some videos in Settings > Storage before syncing.`,
+          limitReached: true,
+          currentCount: currentVideoCount,
+          limit: USER_VIDEO_LIMIT,
+        },
+        { status: 400 }
+      )
+    }
 
     // Acquire distributed lock to prevent concurrent syncs
     lockId = await acquireSyncLock(userId)
