@@ -26,51 +26,45 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    // Get video counts per channel (sorted by count descending)
-    const { data: channelStats } = await admin
+    // Step 1: Get just channel_ids (much smaller payload than joining)
+    const { data: videoChannelIds } = await admin
       .from('videos')
-      .select('channel_id, channels!inner(id, title, thumbnail)')
+      .select('channel_id')
       .eq('user_id', userId)
 
-    interface VideoWithChannel {
-      channel_id: string
-      channels: { id: string; title: string; thumbnail: string | null }
+    // Aggregate counts in memory
+    const countMap = new Map<string, number>()
+    for (const v of (videoChannelIds || []) as { channel_id: string }[]) {
+      countMap.set(v.channel_id, (countMap.get(v.channel_id) || 0) + 1)
     }
 
-    const videoData = channelStats as VideoWithChannel[] | null
+    // Step 2: Get channel details only for channels that have videos
+    const channelIds = Array.from(countMap.keys())
+    let channelsBySize: { channel_id: string; title: string; thumbnail: string | null; video_count: number }[] = []
 
-    // Aggregate video counts per channel
-    const channelCounts: Record<string, {
-      channel_id: string
-      title: string
-      thumbnail: string | null
-      video_count: number
-    }> = {}
+    if (channelIds.length > 0) {
+      const { data: channels } = await admin
+        .from('channels')
+        .select('id, title, thumbnail')
+        .in('id', channelIds)
 
-    for (const video of videoData || []) {
-      const channelId = video.channel_id
-      const channel = video.channels
-
-      if (!channelCounts[channelId]) {
-        channelCounts[channelId] = {
-          channel_id: channelId,
-          title: channel?.title || 'Unknown',
-          thumbnail: channel?.thumbnail || null,
-          video_count: 0
-        }
-      }
-      channelCounts[channelId].video_count++
+      // Step 3: Merge counts with channel details and sort
+      channelsBySize = ((channels || []) as { id: string; title: string; thumbnail: string | null }[])
+        .map(ch => ({
+          channel_id: ch.id,
+          title: ch.title || 'Unknown',
+          thumbnail: ch.thumbnail,
+          video_count: countMap.get(ch.id) || 0
+        }))
+        .sort((a, b) => b.video_count - a.video_count)
     }
-
-    // Sort by video count descending
-    const channelsBySize = Object.values(channelCounts)
-      .sort((a, b) => b.video_count - a.video_count)
 
     // Get video counts by age (for cleanup preview)
+    // Use separate Date instances to avoid mutation bugs
     const now = new Date()
-    const sixMonthsAgo = new Date(now.setMonth(now.getMonth() - 6)).toISOString()
-    const oneYearAgo = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString()
-    const twoYearsAgo = new Date(new Date().setFullYear(new Date().getFullYear() - 2)).toISOString()
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate()).toISOString()
+    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString()
+    const twoYearsAgo = new Date(now.getFullYear() - 2, now.getMonth(), now.getDate()).toISOString()
 
     const { count: olderThan6Months } = await admin
       .from('videos')

@@ -34,6 +34,7 @@ export default function StorageSection() {
   const [deletingChannel, setDeletingChannel] = useState<string | null>(null)
   const [showAllChannels, setShowAllChannels] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'date' | 'channel'; id?: string } | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const fetchStats = async () => {
     try {
@@ -66,6 +67,7 @@ export default function StorageSection() {
     if (!selectedPeriod) return
 
     setDeleting(true)
+    setSuccessMessage(null)
     try {
       const res = await fetch('/api/storage/cleanup', {
         method: 'DELETE',
@@ -74,9 +76,12 @@ export default function StorageSection() {
       })
 
       if (res.ok) {
+        const data = await res.json()
         await fetchStats()
         setSelectedPeriod(null)
         setConfirmDelete(null)
+        setSuccessMessage(`Removed ${data.deletedCount.toLocaleString()} videos`)
+        setTimeout(() => setSuccessMessage(null), 5000)
       }
     } catch (error) {
       console.error('Cleanup failed:', error)
@@ -87,6 +92,7 @@ export default function StorageSection() {
 
   const handleChannelRemove = async (channelId: string) => {
     setDeletingChannel(channelId)
+    setSuccessMessage(null)
     try {
       const res = await fetch('/api/storage/cleanup', {
         method: 'DELETE',
@@ -95,8 +101,11 @@ export default function StorageSection() {
       })
 
       if (res.ok) {
+        const data = await res.json()
         await fetchStats()
         setConfirmDelete(null)
+        setSuccessMessage(`Removed ${data.deletedCount.toLocaleString()} videos`)
+        setTimeout(() => setSuccessMessage(null), 5000)
       }
     } catch (error) {
       console.error('Channel removal failed:', error)
@@ -133,6 +142,13 @@ export default function StorageSection() {
           Manage your video library and free up space.
         </p>
       </div>
+
+      {/* Success message */}
+      {successMessage && (
+        <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-xl px-4 py-3 text-sm font-medium">
+          {successMessage}
+        </div>
+      )}
 
       {/* Overview */}
       <div className={`rounded-xl p-4 ${stats.isAtLimit ? 'bg-red-50 dark:bg-red-900/20' : stats.isNearLimit ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-muted/50'}`}>
