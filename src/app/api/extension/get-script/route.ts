@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
@@ -7,7 +7,7 @@ import { join } from 'path'
 export async function POST() {
   try {
     // Get authenticated user
-    const supabase = await createClient()
+    const supabase = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
