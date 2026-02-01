@@ -3,10 +3,11 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
 // Embed the script template directly since Vercel can't read from public/ filesystem
+// Build timestamp: 2026-02-01T22:30:00Z - force cache invalidation
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      2.0.0
+// @version      2.1.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
