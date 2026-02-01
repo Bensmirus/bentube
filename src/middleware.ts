@@ -31,6 +31,8 @@ const publicRoutes = [
   '/login',
   '/access-denied',
   '/subscribe',
+  '/privacy',
+  '/terms',
   '/auth/callback',
   '/api/auth',
   '/api/health',
