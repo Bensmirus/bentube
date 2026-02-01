@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      2.2.0
+// @version      2.3.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -199,23 +199,47 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   function injectButton() {
     if (document.getElementById('bentube-btn')) return;
     // Try multiple selectors for video pages and channel pages
-    const sub = document.querySelector('#owner #subscribe-button, #subscribe-button, ytd-video-owner-renderer #subscribe-button, #above-the-fold #subscribe-button');
-    if (!sub) return;
+    const selectors = [
+      '#owner #subscribe-button',
+      '#subscribe-button-shape',
+      'ytd-subscribe-button-renderer',
+      '#above-the-fold #subscribe-button',
+      'ytd-video-owner-renderer #subscribe-button',
+      '#channel-header #subscribe-button',
+      '#inner-header-container #subscribe-button'
+    ];
+    let sub = null;
+    for (const sel of selectors) {
+      sub = document.querySelector(sel);
+      if (sub) break;
+    }
+    if (!sub) {
+      console.log('[BenTube] No subscribe button found');
+      return;
+    }
+    console.log('[BenTube] Found subscribe button:', sub);
     channelId = getChannelId();
-    if (!channelId) return;
+    if (!channelId) {
+      console.log('[BenTube] No channel ID found');
+      return;
+    }
+    console.log('[BenTube] Channel ID:', channelId);
     const btn = document.createElement('button');
     btn.id = 'bentube-btn';
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> BenTube';
     btn.onclick = (e) => { e.stopPropagation(); createPopup(btn); };
     sub.parentElement?.insertBefore(btn, sub.nextSibling);
+    console.log('[BenTube] Button injected');
   }
 
   function init() {
+    console.log('[BenTube] Script initialized on:', location.href);
     injectStyles();
     let lastUrl = location.href;
     const observer = new MutationObserver(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
+        console.log('[BenTube] URL changed to:', location.href);
         const old = document.getElementById('bentube-btn');
         if (old) old.remove();
         if (popup) { popup.remove(); popup = null; }
