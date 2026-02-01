@@ -4,13 +4,12 @@ import { useState } from 'react'
 
 export default function ExtensionSection() {
   const [downloading, setDownloading] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
   const downloadScript = async () => {
     setDownloading(true)
     setError(null)
-    setSuccess(false)
 
     try {
       const res = await fetch('/api/extension/get-script', { method: 'POST' })
@@ -21,7 +20,6 @@ export default function ExtensionSection() {
         return
       }
 
-      // Get the script content and trigger download
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -32,7 +30,7 @@ export default function ExtensionSection() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      setSuccess(true)
+      setDownloaded(true)
     } catch {
       setError('Failed to download script')
     } finally {
@@ -41,9 +39,9 @@ export default function ExtensionSection() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold mb-2">Browser Extension</h2>
+        <h2 className="text-lg font-semibold mb-1">Browser Extension</h2>
         <p className="text-sm text-muted-foreground">
           Add YouTube channels to BenTube directly from YouTube.
         </p>
@@ -55,36 +53,76 @@ export default function ExtensionSection() {
         </div>
       )}
 
-      {success && (
-        <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
-          Script downloaded! Open it to install in Tampermonkey.
+      {/* Step 1 */}
+      <div className="flex gap-3">
+        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+          1
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium">Install Tampermonkey</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Browser extension that runs userscripts
+          </p>
+          <a
+            href="https://www.tampermonkey.net/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-2 px-3 h-8 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors leading-8"
+          >
+            Get Tampermonkey
+          </a>
+        </div>
+      </div>
+
+      {/* Step 2 */}
+      <div className="flex gap-3">
+        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+          2
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium">Download your script</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Pre-configured with your API key
+          </p>
+          <button
+            onClick={downloadScript}
+            disabled={downloading}
+            className="mt-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {downloading ? 'Generating...' : downloaded ? 'Download Again' : 'Download Script'}
+          </button>
+        </div>
+      </div>
+
+      {/* Step 3 - Only show after download */}
+      {downloaded && (
+        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+            3
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Open the downloaded file</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Find <span className="font-mono bg-muted px-1 rounded">bentube.user.js</span> in your Downloads folder and open it. Tampermonkey will ask to install - click Install.
+            </p>
+          </div>
         </div>
       )}
 
-      <div className="pt-4 border-t">
-        <p className="text-xs text-muted-foreground mb-4">
-          Requires <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Tampermonkey</a> browser extension
-        </p>
-
-        <button
-          onClick={downloadScript}
-          disabled={downloading}
-          className="px-6 h-11 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-        >
-          {downloading ? 'Generating...' : 'Get Script'}
-        </button>
-
-        <p className="text-xs text-muted-foreground mt-4">
-          Downloads a script with your API key pre-configured. Just install and use!
-        </p>
-      </div>
-
-      <div className="pt-4 border-t">
-        <p className="text-sm font-medium mb-2">How to use</p>
-        <p className="text-xs text-muted-foreground">
-          After installing, go to any YouTube video or channel and click the blue BenTube button to add it to a group.
-        </p>
-      </div>
+      {/* Step 4 - Only show after download */}
+      {downloaded && (
+        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300 delay-150">
+          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center">
+            ✓
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Done! Go to YouTube</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              On any YouTube video or channel page, you will see a blue BenTube button next to Subscribe. Click it to add the channel to a group.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
