@@ -17,15 +17,23 @@ export async function DELETE(request: NextRequest) {
     const { type, channelId, olderThanMonths } = body
 
     if (type === 'channel' && channelId) {
-      // Delete all videos from a specific channel
-
-      // First delete watch_status entries for these videos
-      const { data: videoIds } = await admin
+      // Delete videos from a specific channel (optionally filtered by date)
+      let query = admin
         .from('videos')
         .select('id')
         .eq('user_id', userId)
         .eq('channel_id', channelId)
 
+      // If olderThanMonths is provided, only delete old videos
+      let cutoffIso: string | null = null
+      if (olderThanMonths && olderThanMonths > 0) {
+        const cutoffDate = new Date()
+        cutoffDate.setMonth(cutoffDate.getMonth() - olderThanMonths)
+        cutoffIso = cutoffDate.toISOString()
+        query = query.lt('published_at', cutoffIso)
+      }
+
+      const { data: videoIds } = await query
       const videoData = videoIds as { id: string }[] | null
 
       if (videoData && videoData.length > 0) {
@@ -38,12 +46,18 @@ export async function DELETE(request: NextRequest) {
           .in('video_id', ids)
       }
 
-      // Delete the videos
-      const { error: deleteError } = await admin
+      // Delete the videos with same filters
+      let deleteQuery = admin
         .from('videos')
         .delete()
         .eq('user_id', userId)
         .eq('channel_id', channelId)
+
+      if (cutoffIso) {
+        deleteQuery = deleteQuery.lt('published_at', cutoffIso)
+      }
+
+      const { error: deleteError } = await deleteQuery
 
       if (deleteError) {
         console.error('[Cleanup] Failed to delete channel videos:', deleteError)
@@ -54,7 +68,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({
         success: true,
         deletedCount,
-        message: `Deleted ${deletedCount} videos from channel`
+        message: cutoffIso
+          ? `Deleted ${deletedCount} videos older than ${olderThanMonths} months from channel`
+          : `Deleted ${deletedCount} videos from channel`
       })
 
     } else if (type === 'date' && olderThanMonths) {

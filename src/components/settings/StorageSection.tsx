@@ -33,7 +33,7 @@ export default function StorageSection() {
   const [deleting, setDeleting] = useState(false)
   const [deletingChannel, setDeletingChannel] = useState<string | null>(null)
   const [showAllChannels, setShowAllChannels] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<{ type: 'date' | 'channel'; id?: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'date' | 'channel'; id?: string; months?: number } | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const fetchStats = async () => {
@@ -90,14 +90,14 @@ export default function StorageSection() {
     }
   }
 
-  const handleChannelRemove = async (channelId: string) => {
+  const handleChannelRemove = async (channelId: string, olderThanMonths?: number) => {
     setDeletingChannel(channelId)
     setSuccessMessage(null)
     try {
       const res = await fetch('/api/storage/cleanup', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'channel', channelId })
+        body: JSON.stringify({ type: 'channel', channelId, olderThanMonths })
       })
 
       if (res.ok) {
@@ -285,23 +285,62 @@ export default function StorageSection() {
               </div>
 
               {confirmDelete?.type === 'channel' && confirmDelete.id === channel.channel_id ? (
-                <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => handleChannelRemove(channel.channel_id)}
-                    disabled={deletingChannel === channel.channel_id}
-                    className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
-                  >
-                    {deletingChannel === channel.channel_id && (
-                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    )}
-                    Confirm
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(null)}
-                    className="px-3 py-1.5 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80"
-                  >
-                    Cancel
-                  </button>
+                <div className="flex flex-col gap-2 flex-shrink-0">
+                  {confirmDelete.months === undefined ? (
+                    // Step 1: Choose what to delete
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        onClick={() => setConfirmDelete({ type: 'channel', id: channel.channel_id, months: 0 })}
+                        className="px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium hover:bg-red-200 dark:hover:bg-red-900/50"
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ type: 'channel', id: channel.channel_id, months: 6 })}
+                        className="px-2 py-1 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80"
+                      >
+                        &gt;6mo
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ type: 'channel', id: channel.channel_id, months: 12 })}
+                        className="px-2 py-1 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80"
+                      >
+                        &gt;1yr
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ type: 'channel', id: channel.channel_id, months: 24 })}
+                        className="px-2 py-1 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80"
+                      >
+                        &gt;2yr
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="px-2 py-1 rounded-lg text-muted-foreground text-xs hover:bg-muted"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    // Step 2: Confirm deletion
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleChannelRemove(channel.channel_id, confirmDelete.months || undefined)}
+                        disabled={deletingChannel === channel.channel_id}
+                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {deletingChannel === channel.channel_id && (
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        )}
+                        {confirmDelete.months === 0 ? 'Delete All' : `Delete >${confirmDelete.months === 6 ? '6mo' : confirmDelete.months === 12 ? '1yr' : '2yr'}`}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="px-3 py-1.5 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
