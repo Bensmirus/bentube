@@ -23,6 +23,7 @@ const protectedApiRoutes = [
   '/api/billing/checkout',
   '/api/billing/status',
   '/api/billing/portal',
+  '/api/extension/api-key',
 ]
 
 // Public routes that don't need auth check
