@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      3.5.0
+// @version      3.6.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -245,36 +245,50 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   // BenTube triangle logo SVG
   const BENTUBE_LOGO = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>';
 
-  function injectButton() {
-    if (document.getElementById('bentube-btn')) return;
+  let lastInjectionTime = 0;
 
-    // Find the right actions container - try multiple selectors
-    // For video pages: look for the area with bell/subscribe buttons
-    // For channel pages: look for channel header buttons
-    const selectors = [
-      '#actions #flexible-item-buttons',  // Video page actions
-      '#actions-inner #menu',              // Alternative video page
-      '#top-row #actions',                 // Another video layout
-      'ytd-watch-metadata #actions',       // Watch metadata actions
-      '#subscribe-button',                 // Fallback to subscribe button
-      '#channel-header #subscribe-button', // Channel page
-      '#inner-header-container #buttons'   // Channel page buttons
+  function injectButton() {
+    // Check if button already exists and is still in DOM
+    const existingBtn = document.getElementById('bentube-btn');
+    if (existingBtn && document.body.contains(existingBtn)) return;
+
+    // Remove orphaned button if it exists but is not in DOM
+    if (existingBtn) existingBtn.remove();
+
+    // Throttle injection attempts (wait at least 500ms between attempts)
+    const now = Date.now();
+    if (now - lastInjectionTime < 500) return;
+    lastInjectionTime = now;
+
+    // For video pages, target the #owner section which contains subscribe button
+    // This is more stable than targeting action buttons which YouTube frequently updates
+    const videoPageSelectors = [
+      '#owner ytd-subscribe-button-renderer',  // Subscribe button in owner section
+      '#owner #subscribe-button',               // Alternative subscribe button
+      'ytd-video-owner-renderer #subscribe-button', // Video owner subscribe
+      '#above-the-fold #owner'                  // Owner section fallback
     ];
 
-    let container = null;
-    let insertMethod = 'after'; // 'after' or 'append'
+    // For channel pages
+    const channelPageSelectors = [
+      '#channel-header ytd-subscribe-button-renderer',
+      '#inner-header-container #subscribe-button',
+      '#channel-header-container #subscribe-button'
+    ];
 
-    for (const sel of selectors) {
-      container = document.querySelector(sel);
-      if (container) {
-        console.log('[BenTube] Found container:', sel);
+    const allSelectors = [...videoPageSelectors, ...channelPageSelectors];
+
+    let target = null;
+    for (const sel of allSelectors) {
+      target = document.querySelector(sel);
+      if (target) {
+        console.log('[BenTube] Found target:', sel);
         break;
       }
     }
 
-    if (!container) {
-      console.log('[BenTube] No container found for button');
-      return;
+    if (!target) {
+      return; // Silently return, will retry on next mutation
     }
 
     channelId = getChannelId();
@@ -290,13 +304,9 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
     btn.title = 'Add to BenTube';
     btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); createPopup(btn); };
 
-    // Insert button appropriately based on container type
-    if (container.id === 'subscribe-button' || container.tagName === 'YTD-SUBSCRIBE-BUTTON-RENDERER') {
-      container.parentElement?.insertBefore(btn, container.nextSibling);
-    } else {
-      container.appendChild(btn);
-    }
-    console.log('[BenTube] Button injected');
+    // Insert after the target element
+    target.parentElement?.insertBefore(btn, target.nextSibling);
+    console.log('[BenTube] Button injected successfully');
   }
 
   // Menu command to test connection
@@ -310,11 +320,14 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   });
 
   function init() {
-    console.log('[BenTube] Script initialized v3.5.0 on:', location.href);
+    console.log('[BenTube] Script initialized v3.6.0 on:', location.href);
     injectStyles();
 
     let lastUrl = location.href;
+    let mutationTimeout = null;
+
     const observer = new MutationObserver(() => {
+      // Check for URL change
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         console.log('[BenTube] URL changed to:', location.href);
@@ -322,13 +335,28 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
         if (old) old.remove();
         if (popup) { popup.remove(); popup = null; }
         channelId = null;
+        lastInjectionTime = 0; // Reset throttle on URL change
       }
-      injectButton();
+
+      // Debounce mutation handling - wait for DOM to settle
+      if (mutationTimeout) clearTimeout(mutationTimeout);
+      mutationTimeout = setTimeout(injectButton, 200);
     });
     observer.observe(document.body, { subtree: true, childList: true });
 
-    // Initial injection with a small delay to let YouTube render
-    setTimeout(injectButton, 1000);
+    // Initial injection attempts - YouTube renders progressively
+    setTimeout(injectButton, 1500);
+    setTimeout(injectButton, 3000);
+    setTimeout(injectButton, 5000);
+
+    // Periodic check every 3 seconds to re-inject if button was removed
+    setInterval(() => {
+      const btn = document.getElementById('bentube-btn');
+      if (!btn || !document.body.contains(btn)) {
+        lastInjectionTime = 0; // Reset throttle
+        injectButton();
+      }
+    }, 3000);
   }
 
   if (document.readyState === 'loading') {
