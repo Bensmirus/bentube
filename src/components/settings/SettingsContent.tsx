@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AccountSection from './AccountSection'
 import ImportSection from './ImportSection'
+import StorageSection from './StorageSection'
 import BillingSection from './BillingSection'
 import AppearanceSection from './AppearanceSection'
 import BottomNav from '../BottomNav'
 
-type Section = 'account' | 'import' | 'billing' | 'appearance'
+type Section = 'account' | 'import' | 'storage' | 'billing' | 'appearance'
 
 export default function SettingsContent() {
   const router = useRouter()
@@ -52,6 +53,7 @@ export default function SettingsContent() {
   const sections = [
     { id: 'account' as const, label: 'Account', icon: '👤' },
     { id: 'import' as const, label: 'Import & Sync', icon: '🔄' },
+    { id: 'storage' as const, label: 'Storage', icon: '📦' },
     { id: 'appearance' as const, label: 'Appearance', icon: '🎨' },
     { id: 'billing' as const, label: 'Billing', icon: '💳' },
   ]
@@ -90,6 +92,7 @@ export default function SettingsContent() {
         <div className="rounded-2xl border p-6 isolate bg-[#ffffff] dark:bg-[#262017]">
           {activeSection === 'account' && user && <AccountSection user={user} />}
           {activeSection === 'import' && <ImportSection />}
+          {activeSection === 'storage' && <StorageSection />}
           {activeSection === 'appearance' && <AppearanceSection />}
           {activeSection === 'billing' && <BillingSection />}
         </div>
