@@ -80,7 +80,7 @@ export async function hasApiKey(userId: string): Promise<boolean> {
   const { data: userData } = await admin
     .from('users')
     .select('api_key_hash')
-    .eq('id', userId)
+    .eq('auth_user_id', userId)
     .single()
 
   const user = userData as { api_key_hash: string | null } | null
@@ -95,7 +95,7 @@ export async function saveApiKeyHash(userId: string, hash: string): Promise<bool
   const { error } = await admin
     .from('users')
     .update({ api_key_hash: hash } as never)
-    .eq('id', userId)
+    .eq('auth_user_id', userId)
 
   return !error
 }
@@ -108,7 +108,7 @@ export async function revokeApiKey(userId: string): Promise<boolean> {
   const { error } = await admin
     .from('users')
     .update({ api_key_hash: null } as never)
-    .eq('id', userId)
+    .eq('auth_user_id', userId)
 
   return !error
 }
