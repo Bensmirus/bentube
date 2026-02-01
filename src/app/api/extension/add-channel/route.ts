@@ -142,6 +142,16 @@ export async function POST(request: NextRequest) {
         channel_id: channelId,
       } as never, { onConflict: 'user_id,channel_id', ignoreDuplicates: true })
 
+    // Create user_channels entry for health tracking (if not exists)
+    await admin
+      .from('user_channels')
+      .upsert({
+        user_id: userId,
+        channel_id: channelId,
+        failure_count: 0,
+        is_dead: false,
+      } as never, { onConflict: 'user_id,channel_id', ignoreDuplicates: true })
+
     // Check if channel is already in this group
     const { data: existingGroupChannel } = await admin
       .from('group_channels')
