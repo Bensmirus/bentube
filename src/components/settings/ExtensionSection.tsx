@@ -39,7 +39,7 @@ export default function ExtensionSection() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold mb-1">Browser Extension</h2>
         <p className="text-sm text-muted-foreground">
@@ -53,74 +53,44 @@ export default function ExtensionSection() {
         </div>
       )}
 
-      {/* Step 1 */}
-      <div className="flex gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-          1
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium">Install Tampermonkey</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Browser extension that runs userscripts
-          </p>
-          <a
-            href="https://www.tampermonkey.net/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block mt-2 px-3 h-8 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors leading-8"
-          >
-            Get Tampermonkey
-          </a>
-        </div>
-      </div>
-
-      {/* Step 2 */}
-      <div className="flex gap-3">
-        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-          2
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium">Download your script</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Pre-configured with your API key
-          </p>
+      {!downloaded ? (
+        <div className="pt-2">
           <button
             onClick={downloadScript}
             disabled={downloading}
-            className="mt-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {downloading ? 'Generating...' : downloaded ? 'Download Again' : 'Download Script'}
+            {downloading ? 'Generating...' : 'Download Script'}
           </button>
+          <p className="text-xs text-muted-foreground mt-3">
+            Requires <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer" className="underline">Tampermonkey</a>
+          </p>
         </div>
-      </div>
-
-      {/* Step 3 - Only show after download */}
-      {downloaded && (
-        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-            3
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Open the downloaded file</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Find <span className="font-mono bg-muted px-1 rounded">bentube.user.js</span> in your Downloads folder and open it. Tampermonkey will ask to install - click Install.
+      ) : (
+        <div className="space-y-4 pt-2">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+              Script downloaded!
+            </p>
+            <p className="text-sm text-green-600 dark:text-green-500 mt-1">
+              Open <span className="font-mono">bentube.user.js</span> from your Downloads folder. Tampermonkey will ask to install it.
             </p>
           </div>
-        </div>
-      )}
 
-      {/* Step 4 - Only show after download */}
-      {downloaded && (
-        <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 duration-300 delay-150">
-          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center">
-            ✓
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Done! Go to YouTube</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              On any YouTube video or channel page, you will see a blue BenTube button next to Subscribe. Click it to add the channel to a group.
+          <div>
+            <p className="text-sm font-medium mb-1">Then on YouTube:</p>
+            <p className="text-xs text-muted-foreground">
+              Look for the blue BenTube button next to Subscribe. Click it to add channels to your groups.
             </p>
           </div>
+
+          <button
+            onClick={downloadScript}
+            disabled={downloading}
+            className="text-sm text-muted-foreground underline hover:text-foreground"
+          >
+            Download again
+          </button>
         </div>
       )}
     </div>
