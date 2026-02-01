@@ -8,9 +8,12 @@ import ImportSection from './ImportSection'
 import StorageSection from './StorageSection'
 import BillingSection from './BillingSection'
 import AppearanceSection from './AppearanceSection'
+import AdminSection from './AdminSection'
 import BottomNav from '../BottomNav'
 
-type Section = 'account' | 'import' | 'storage' | 'billing' | 'appearance'
+const ADMIN_EMAIL = 'bensmir.hbs@gmail.com'
+
+type Section = 'account' | 'import' | 'storage' | 'billing' | 'appearance' | 'admin'
 
 export default function SettingsContent() {
   const router = useRouter()
@@ -50,12 +53,15 @@ export default function SettingsContent() {
     )
   }
 
+  const isAdmin = user?.email === ADMIN_EMAIL
+
   const sections = [
     { id: 'account' as const, label: 'Account', icon: '👤' },
     { id: 'import' as const, label: 'Import & Sync', icon: '🔄' },
     { id: 'storage' as const, label: 'Storage', icon: '📦' },
     { id: 'appearance' as const, label: 'Appearance', icon: '🎨' },
     { id: 'billing' as const, label: 'Billing', icon: '💳' },
+    ...(isAdmin ? [{ id: 'admin' as const, label: 'Admin', icon: '🔑' }] : []),
   ]
 
   return (
@@ -95,6 +101,7 @@ export default function SettingsContent() {
           {activeSection === 'storage' && <StorageSection />}
           {activeSection === 'appearance' && <AppearanceSection />}
           {activeSection === 'billing' && <BillingSection />}
+          {activeSection === 'admin' && isAdmin && <AdminSection />}
         </div>
       </div>
 

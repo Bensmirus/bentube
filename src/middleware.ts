@@ -20,17 +20,23 @@ const protectedApiRoutes = [
   '/api/tags',
   '/api/sync',
   '/api/notes',
+  '/api/billing/checkout',
+  '/api/billing/status',
+  '/api/billing/portal',
 ]
 
 // Public routes that don't need auth check
 const publicRoutes = [
   '/login',
   '/access-denied',
+  '/subscribe',
   '/auth/callback',
   '/api/auth',
   '/api/health',
   '/api/icons',
   '/api/cron',
+  '/api/billing/webhook',
+  '/api/billing/free-tier',
 ]
 
 export async function middleware(request: NextRequest) {
@@ -92,27 +98,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Beta access: Check if user's email is in the allowlist
-  // If ALLOWED_EMAILS is set, only those emails can access the app
+  // Access control: Check if user has access via ALLOWED_EMAILS or subscription
+  // Users in ALLOWED_EMAILS get free access, others need a subscription
   if (user && (isProtectedRoute || isProtectedApi)) {
-    const allowedEmails = process.env.ALLOWED_EMAILS?.split(',').map(e => e.trim().toLowerCase())
-    if (allowedEmails && allowedEmails.length > 0) {
-      const userEmail = user.email?.toLowerCase()
-      if (!userEmail || !allowedEmails.includes(userEmail)) {
-        if (isProtectedApi) {
-          return new NextResponse(
-            JSON.stringify({ success: false, error: 'Access denied - Beta access only' }),
-            {
-              status: 403,
-              headers: { 'Content-Type': 'application/json' }
-            }
-          )
-        }
-        // Redirect to access denied page
-        const url = request.nextUrl.clone()
-        url.pathname = '/access-denied'
-        return NextResponse.redirect(url)
+    const allowedEmails = process.env.ALLOWED_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || []
+    const userEmail = user.email?.toLowerCase()
+
+    // Check if user is in the free access list
+    const hasFreeAccess = userEmail && allowedEmails.includes(userEmail)
+
+    if (!hasFreeAccess) {
+      // User needs a subscription - redirect to subscribe page
+      // The subscribe page will check their subscription status
+      if (isProtectedApi) {
+        return new NextResponse(
+          JSON.stringify({ success: false, error: 'Subscription required' }),
+          {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
       }
+      // Redirect to subscribe page
+      const url = request.nextUrl.clone()
+      url.pathname = '/subscribe'
+      return NextResponse.redirect(url)
     }
   }
 
