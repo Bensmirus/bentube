@@ -107,9 +107,10 @@ export default function ExtensionSection() {
               Script downloaded!
             </p>
             <ol className="text-sm text-green-600 dark:text-green-500 mt-2 space-y-2 list-decimal list-inside">
-              <li>Drag <span className="font-mono bg-green-100 dark:bg-green-800/30 px-1 rounded">bentube.user.js</span> from Downloads onto your browser window</li>
-              <li>Tampermonkey will prompt - click Install</li>
-              <li>Go to YouTube and look for the blue BenTube button</li>
+              <li>Click Tampermonkey icon → Dashboard → Utilities tab</li>
+              <li>Under &quot;Import from file&quot;, select <span className="font-mono bg-green-100 dark:bg-green-800/30 px-1 rounded">bentube.user.js</span></li>
+              <li>Click Install when prompted</li>
+              <li>Go to YouTube - look for the blue BenTube button</li>
             </ol>
           </div>
         </div>
