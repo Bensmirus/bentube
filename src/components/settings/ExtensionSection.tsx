@@ -106,16 +106,12 @@ export default function ExtensionSection() {
             <p className="text-sm font-medium text-green-700 dark:text-green-400">
               Script downloaded!
             </p>
-            <ol className="text-sm text-green-600 dark:text-green-500 mt-2 space-y-1 list-decimal list-inside">
-              <li>Open <span className="font-mono bg-green-100 dark:bg-green-800/30 px-1 rounded">bentube.user.js</span> from Downloads</li>
+            <ol className="text-sm text-green-600 dark:text-green-500 mt-2 space-y-2 list-decimal list-inside">
+              <li>Drag <span className="font-mono bg-green-100 dark:bg-green-800/30 px-1 rounded">bentube.user.js</span> from Downloads onto your browser window</li>
               <li>Tampermonkey will prompt - click Install</li>
               <li>Go to YouTube and look for the blue BenTube button</li>
             </ol>
           </div>
-
-          <p className="text-xs text-muted-foreground">
-            If nothing happens when you open the file, make sure Tampermonkey is installed and enabled.
-          </p>
         </div>
       )}
     </div>
