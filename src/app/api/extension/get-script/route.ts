@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
@@ -231,7 +231,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   }
 })();`
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   try {
     const supabase = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
