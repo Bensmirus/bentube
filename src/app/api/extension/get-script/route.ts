@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      2.1.0
+// @version      2.2.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -86,10 +86,10 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
     style.textContent = \`
       #bentube-btn {
         display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; margin-left: 8px;
-        background: linear-gradient(135deg, #3B82F6, #2563EB); color: white; border: none;
+        background: linear-gradient(135deg, #B8860B, #8B6914); color: white; border: none;
         border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer;
       }
-      #bentube-btn:hover { background: linear-gradient(135deg, #2563EB, #1D4ED8); }
+      #bentube-btn:hover { background: linear-gradient(135deg, #DAA520, #B8860B); }
       .bentube-popup {
         position: absolute; z-index: 9999; width: 280px; background: white;
         border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
@@ -108,7 +108,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
         background: transparent; text-align: left; margin-bottom: 4px;
       }
       html[dark] .bentube-group { border-color: #3f3f3f; }
-      .bentube-group:hover { background: #f5f5f5; border-color: #3B82F6; }
+      .bentube-group:hover { background: #f5f5f5; border-color: #B8860B; }
       html[dark] .bentube-group:hover { background: #2f2f2f; }
       .bentube-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
       .bentube-name { flex: 1; font-size: 14px; font-weight: 500; }
@@ -198,7 +198,8 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 
   function injectButton() {
     if (document.getElementById('bentube-btn')) return;
-    const sub = document.querySelector('#owner #subscribe-button, #subscribe-button');
+    // Try multiple selectors for video pages and channel pages
+    const sub = document.querySelector('#owner #subscribe-button, #subscribe-button, ytd-video-owner-renderer #subscribe-button, #above-the-fold #subscribe-button');
     if (!sub) return;
     channelId = getChannelId();
     if (!channelId) return;
