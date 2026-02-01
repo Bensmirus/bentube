@@ -1,13 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ExtensionSection() {
+  const [hasKey, setHasKey] = useState<boolean | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    checkKeyStatus()
+  }, [])
+
+  const checkKeyStatus = async () => {
+    try {
+      const res = await fetch('/api/extension/api-key')
+      const data = await res.json()
+      setHasKey(data.hasApiKey)
+    } catch {
+      // Ignore - just won't show status
+    }
+  }
+
   const downloadScript = async () => {
+    // Warn if replacing existing key
+    if (hasKey && !downloaded) {
+      const confirmed = confirm(
+        'This will generate a new API key and replace your current one. Your old script will stop working.\n\nContinue?'
+      )
+      if (!confirmed) return
+    }
+
     setDownloading(true)
     setError(null)
 
@@ -31,6 +54,7 @@ export default function ExtensionSection() {
       URL.revokeObjectURL(url)
 
       setDownloaded(true)
+      setHasKey(true)
     } catch {
       setError('Failed to download script')
     } finally {
@@ -47,6 +71,16 @@ export default function ExtensionSection() {
         </p>
       </div>
 
+      {/* Status indicator */}
+      {hasKey !== null && (
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <span className="text-xs text-muted-foreground">
+            {hasKey ? 'Extension active' : 'Not set up'}
+          </span>
+        </div>
+      )}
+
       {error && (
         <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
           {error}
@@ -54,43 +88,34 @@ export default function ExtensionSection() {
       )}
 
       {!downloaded ? (
-        <div className="pt-2">
+        <div>
           <button
             onClick={downloadScript}
             disabled={downloading}
             className="px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            {downloading ? 'Generating...' : 'Download Script'}
+            {downloading ? 'Generating...' : hasKey ? 'Download New Script' : 'Download Script'}
           </button>
           <p className="text-xs text-muted-foreground mt-3">
-            Requires <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer" className="underline">Tampermonkey</a>
+            Requires <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer" className="underline">Tampermonkey</a> browser extension
           </p>
         </div>
       ) : (
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4">
           <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
             <p className="text-sm font-medium text-green-700 dark:text-green-400">
               Script downloaded!
             </p>
-            <p className="text-sm text-green-600 dark:text-green-500 mt-1">
-              Open <span className="font-mono">bentube.user.js</span> from your Downloads folder. Tampermonkey will ask to install it.
-            </p>
+            <ol className="text-sm text-green-600 dark:text-green-500 mt-2 space-y-1 list-decimal list-inside">
+              <li>Open <span className="font-mono bg-green-100 dark:bg-green-800/30 px-1 rounded">bentube.user.js</span> from Downloads</li>
+              <li>Tampermonkey will prompt - click Install</li>
+              <li>Go to YouTube and look for the blue BenTube button</li>
+            </ol>
           </div>
 
-          <div>
-            <p className="text-sm font-medium mb-1">Then on YouTube:</p>
-            <p className="text-xs text-muted-foreground">
-              Look for the blue BenTube button next to Subscribe. Click it to add channels to your groups.
-            </p>
-          </div>
-
-          <button
-            onClick={downloadScript}
-            disabled={downloading}
-            className="text-sm text-muted-foreground underline hover:text-foreground"
-          >
-            Download again
-          </button>
+          <p className="text-xs text-muted-foreground">
+            If nothing happens when you open the file, make sure Tampermonkey is installed and enabled.
+          </p>
         </div>
       )}
     </div>
