@@ -36,20 +36,10 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   }
 
   function getSettings() {
-    let serverUrl, apiKey;
-    try {
-      serverUrl = GM_getValue(STORAGE_KEY_PREFIX + 'serverUrl', null);
-      apiKey = GM_getValue(STORAGE_KEY_PREFIX + 'apiKey', null);
-    } catch (e) {}
-    if (!serverUrl && !apiKey) {
-      try {
-        serverUrl = localStorage.getItem(STORAGE_KEY_PREFIX + 'serverUrl');
-        apiKey = localStorage.getItem(STORAGE_KEY_PREFIX + 'apiKey');
-      } catch (e) {}
-    }
+    // Always use the embedded defaults - no storage override
     return {
-      serverUrl: serverUrl || DEFAULT_SERVER_URL,
-      apiKey: apiKey || DEFAULT_API_KEY
+      serverUrl: DEFAULT_SERVER_URL,
+      apiKey: DEFAULT_API_KEY
     };
   }
 
