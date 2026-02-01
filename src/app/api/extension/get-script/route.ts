@@ -5,7 +5,7 @@ import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 // Embed the script template directly since Vercel can't read from public/ filesystem
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
-// @namespace    https://bentube.app
+// @namespace    https://ben-tube.com
 // @version      2.0.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
@@ -16,7 +16,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 // @grant        GM_registerMenuCommand
 // @grant        unsafeWindow
 // @noframes
-// @connect      bentube.app
+// @connect      ben-tube.com
 // @connect      localhost
 // @connect      *
 // @run-at       document-idle
@@ -25,7 +25,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 (function() {
   'use strict';
 
-  const DEFAULT_SERVER_URL = 'https://bentube.app';
+  const DEFAULT_SERVER_URL = 'https://ben-tube.com';
   const DEFAULT_API_KEY = '__API_KEY_PLACEHOLDER__';
   const STORAGE_KEY_PREFIX = 'bentube_';
 

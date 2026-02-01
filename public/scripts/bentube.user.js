@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
-// @namespace    https://bentube.app
+// @namespace    https://ben-tube.com
 // @version      2.0.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
@@ -11,7 +11,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        unsafeWindow
 // @noframes
-// @connect      bentube.app
+// @connect      ben-tube.com
 // @connect      localhost
 // @connect      *
 // @run-at       document-idle
@@ -24,7 +24,7 @@
   // Configuration & Storage
   // ============================================
 
-  const DEFAULT_SERVER_URL = 'https://bentube.app';
+  const DEFAULT_SERVER_URL = 'https://ben-tube.com';
   const DEFAULT_API_KEY = ''; // DO NOT EDIT - Generated automatically
   const STORAGE_KEY_PREFIX = 'bentube_';
   const DEBUG = false;
@@ -828,7 +828,7 @@
           </div>
           <div class="bentube-form-group">
             <label>Server URL</label>
-            <input type="text" id="bentube-server-url" placeholder="https://bentube.app">
+            <input type="text" id="bentube-server-url" placeholder="https://ben-tube.com">
           </div>
           <div class="bentube-form-group">
             <label>API Key (get from BenTube Settings > Extension)</label>
