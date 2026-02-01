@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      2.0.0
+// @version      2.1.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -40,27 +40,10 @@
   }
 
   function getSettings() {
-    let serverUrl, apiKey;
-
-    try {
-      serverUrl = GM_getValue(STORAGE_KEY_PREFIX + 'serverUrl', null);
-      apiKey = GM_getValue(STORAGE_KEY_PREFIX + 'apiKey', null);
-    } catch (e) {
-      log('GM_getValue failed, using localStorage');
-    }
-
-    if (!serverUrl && !apiKey) {
-      try {
-        serverUrl = localStorage.getItem(STORAGE_KEY_PREFIX + 'serverUrl');
-        apiKey = localStorage.getItem(STORAGE_KEY_PREFIX + 'apiKey');
-      } catch (e) {
-        log('localStorage also failed');
-      }
-    }
-
+    // Always use embedded defaults - no storage override
     return {
-      serverUrl: serverUrl || DEFAULT_SERVER_URL,
-      apiKey: apiKey || DEFAULT_API_KEY
+      serverUrl: DEFAULT_SERVER_URL,
+      apiKey: DEFAULT_API_KEY
     };
   }
 
