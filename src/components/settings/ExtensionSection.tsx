@@ -82,7 +82,7 @@ export default function ExtensionSection() {
       <div className="pt-4 border-t">
         <p className="text-sm font-medium mb-2">How to use</p>
         <p className="text-xs text-muted-foreground">
-          After installing, go to any YouTube video or channel and click the blue "BenTube" button to add it to a group.
+          After installing, go to any YouTube video or channel and click the blue BenTube button to add it to a group.
         </p>
       </div>
     </div>
