@@ -12,7 +12,6 @@ export default function ExtensionSection() {
   const [scriptCopied, setScriptCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Check if user has an API key
   useEffect(() => {
     checkApiKey()
   }, [])
@@ -52,7 +51,7 @@ export default function ExtensionSection() {
   }
 
   const revokeKey = async () => {
-    if (!confirm('Are you sure? This will stop the browser extension from working.')) {
+    if (!confirm('Are you sure? This will stop the extension from working.')) {
       return
     }
 
@@ -94,14 +93,20 @@ export default function ExtensionSection() {
   }
 
   const copyUserscript = async () => {
+    setError(null)
     try {
       const res = await fetch('/scripts/bentube-userscript.js')
+      if (!res.ok) {
+        throw new Error('Script not found')
+      }
       const script = await res.text()
       await navigator.clipboard.writeText(script)
       setScriptCopied(true)
       setTimeout(() => setScriptCopied(false), 2000)
-    } catch {
-      setError('Failed to copy userscript')
+    } catch (err) {
+      // Fallback: open script in new tab
+      window.open('/scripts/bentube-userscript.js', '_blank')
+      setError('Opened script in new tab - copy it manually')
     }
   }
 
@@ -121,113 +126,130 @@ export default function ExtensionSection() {
       <div>
         <h2 className="text-lg font-semibold mb-2">Browser Extension</h2>
         <p className="text-sm text-muted-foreground">
-          Add YouTube channels to your groups directly from YouTube using a browser userscript.
+          Add YouTube channels to BenTube directly from YouTube.
         </p>
       </div>
 
-      {/* API Key Status */}
-      <div className="pt-4 border-t space-y-3">
-        <h3 className="text-sm font-medium">API Key</h3>
-
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              hasApiKey ? 'bg-green-500' : 'bg-gray-400'
-            }`}
-          />
-          <span className="text-sm text-muted-foreground">
-            {hasApiKey ? 'Active' : 'Not configured'}
-          </span>
+      {error && (
+        <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-            {error}
+      {/* Step 1 */}
+      <div className="pt-4 border-t">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+            1
           </div>
-        )}
-
-        <div className="flex gap-2">
-          <button
-            onClick={generateKey}
-            disabled={generating}
-            className="px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {generating
-              ? 'Generating...'
-              : hasApiKey
-                ? 'Regenerate Key'
-                : 'Generate Key'}
-          </button>
-
-          {hasApiKey && (
-            <button
-              onClick={revokeKey}
-              disabled={revoking}
-              className="px-5 h-10 rounded-lg border text-sm font-medium hover:bg-muted transition-colors text-red-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {revoking ? 'Revoking...' : 'Revoke Key'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Userscript */}
-      <div className="pt-4 border-t space-y-3">
-        <h3 className="text-sm font-medium">Userscript</h3>
-        <p className="text-sm text-muted-foreground">
-          Copy the script below and paste it into Tampermonkey.
-        </p>
-        <button
-          onClick={copyUserscript}
-          className="px-5 h-10 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors flex items-center gap-2"
-        >
-          {scriptCopied ? (
-            <>
-              <CheckIcon className="w-4 h-4 text-green-500" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <CopyIcon className="w-4 h-4" />
-              Copy Userscript
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Instructions */}
-      <div className="pt-4 border-t space-y-3">
-        <h3 className="text-sm font-medium">Setup</h3>
-        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-          <li>
-            Install{' '}
+          <div className="flex-1 space-y-2">
+            <p className="text-sm font-medium">Install Tampermonkey</p>
             <a
               href="https://www.tampermonkey.net/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="inline-block px-4 h-9 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors leading-9"
             >
-              Tampermonkey
-            </a>{' '}
-            in your browser
-          </li>
-          <li>Click Tampermonkey icon → Create new script</li>
-          <li>Delete everything, paste the copied script, save</li>
-          <li>Generate an API key above</li>
-          <li>On YouTube, click the BenTube button → gear icon → paste your key</li>
-        </ol>
+              Get Tampermonkey
+            </a>
+          </div>
+        </div>
       </div>
 
-      {/* New API Key Modal */}
+      {/* Step 2 */}
+      <div className="pt-4 border-t">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+            2
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-sm font-medium">Add the userscript</p>
+            <p className="text-xs text-muted-foreground">Copy script, then: Tampermonkey icon → Create new script → paste → save</p>
+            <button
+              onClick={copyUserscript}
+              className="px-4 h-9 rounded-lg bg-muted text-sm font-medium hover:bg-muted/80 transition-colors flex items-center gap-2"
+            >
+              {scriptCopied ? (
+                <>
+                  <CheckIcon className="w-4 h-4 text-green-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <CopyIcon className="w-4 h-4" />
+                  Copy Script
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Step 3 */}
+      <div className="pt-4 border-t">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+            3
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-sm font-medium">Generate API key</p>
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  hasApiKey ? 'bg-green-500' : 'bg-gray-400'
+                }`}
+              />
+              <span className="text-xs text-muted-foreground">
+                {hasApiKey ? 'Key active' : 'No key'}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={generateKey}
+                disabled={generating}
+                className="px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {generating ? 'Generating...' : hasApiKey ? 'New Key' : 'Generate Key'}
+              </button>
+              {hasApiKey && (
+                <button
+                  onClick={revokeKey}
+                  disabled={revoking}
+                  className="px-4 h-9 rounded-lg border text-sm font-medium hover:bg-muted transition-colors text-red-500"
+                >
+                  Revoke
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Step 4 */}
+      <div className="pt-4 border-t">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+            4
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-sm font-medium">Use on YouTube</p>
+            <p className="text-xs text-muted-foreground">
+              Go to any YouTube video or channel. Click the blue BenTube button → gear icon → paste your API key.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* API Key Modal */}
       {newApiKey && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-semibold">Your New API Key</h3>
+            <h3 className="text-lg font-semibold">Your API Key</h3>
             <p className="text-sm text-muted-foreground">
-              Copy this key now. It will not be shown again!
+              Copy this now - it won't be shown again!
             </p>
 
-            <div className="bg-muted rounded-lg p-3 font-mono text-sm break-all">
+            <div className="bg-muted rounded-lg p-3 font-mono text-sm break-all select-all">
               {newApiKey}
             </div>
 
@@ -254,16 +276,7 @@ export default function ExtensionSection() {
 
 function CopyIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
     </svg>
@@ -272,16 +285,7 @@ function CopyIcon(props: React.SVGProps<SVGSVGElement>) {
 
 function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   )
