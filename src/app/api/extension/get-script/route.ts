@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      3.6.0
+// @version      3.7.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -103,13 +103,18 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
     style.id = 'bentube-styles';
     style.textContent = \`
       #bentube-btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 40px; height: 40px; margin-left: 8px;
+        position: fixed;
+        z-index: 9998;
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px;
         background: linear-gradient(135deg, #B8860B, #8B6914); color: white; border: none;
-        border-radius: 50%; cursor: pointer; vertical-align: middle;
+        border-radius: 50%; cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: opacity 0.2s;
       }
       #bentube-btn:hover { background: linear-gradient(135deg, #DAA520, #B8860B); }
       #bentube-btn svg { width: 20px; height: 20px; }
+      #bentube-btn.bentube-hidden { opacity: 0; pointer-events: none; }
       .bentube-popup {
         position: fixed; z-index: 9999; width: 300px; background: white;
         border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
@@ -245,68 +250,69 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   // BenTube triangle logo SVG
   const BENTUBE_LOGO = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>';
 
-  let lastInjectionTime = 0;
+  let btn = null;
 
-  function injectButton() {
-    // Check if button already exists and is still in DOM
-    const existingBtn = document.getElementById('bentube-btn');
-    if (existingBtn && document.body.contains(existingBtn)) return;
+  function createButton() {
+    if (btn && document.body.contains(btn)) return btn;
 
-    // Remove orphaned button if it exists but is not in DOM
-    if (existingBtn) existingBtn.remove();
-
-    // Throttle injection attempts (wait at least 500ms between attempts)
-    const now = Date.now();
-    if (now - lastInjectionTime < 500) return;
-    lastInjectionTime = now;
-
-    // For video pages, target the #owner section which contains subscribe button
-    // This is more stable than targeting action buttons which YouTube frequently updates
-    const videoPageSelectors = [
-      '#owner ytd-subscribe-button-renderer',  // Subscribe button in owner section
-      '#owner #subscribe-button',               // Alternative subscribe button
-      'ytd-video-owner-renderer #subscribe-button', // Video owner subscribe
-      '#above-the-fold #owner'                  // Owner section fallback
-    ];
-
-    // For channel pages
-    const channelPageSelectors = [
-      '#channel-header ytd-subscribe-button-renderer',
-      '#inner-header-container #subscribe-button',
-      '#channel-header-container #subscribe-button'
-    ];
-
-    const allSelectors = [...videoPageSelectors, ...channelPageSelectors];
-
-    let target = null;
-    for (const sel of allSelectors) {
-      target = document.querySelector(sel);
-      if (target) {
-        console.log('[BenTube] Found target:', sel);
-        break;
-      }
-    }
-
-    if (!target) {
-      return; // Silently return, will retry on next mutation
-    }
-
-    channelId = getChannelId();
-    if (!channelId) {
-      console.log('[BenTube] No channel ID found');
-      return;
-    }
-    console.log('[BenTube] Channel ID:', channelId);
-
-    const btn = document.createElement('button');
+    btn = document.createElement('button');
     btn.id = 'bentube-btn';
     btn.innerHTML = BENTUBE_LOGO;
     btn.title = 'Add to BenTube';
+    btn.className = 'bentube-hidden'; // Start hidden
     btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); createPopup(btn); };
+    document.body.appendChild(btn);
+    console.log('[BenTube] Floating button created');
+    return btn;
+  }
 
-    // Insert after the target element
-    target.parentElement?.insertBefore(btn, target.nextSibling);
-    console.log('[BenTube] Button injected successfully');
+  function updateButtonPosition() {
+    if (!btn) return;
+
+    // Find anchor element to position near
+    const selectors = [
+      '#owner ytd-subscribe-button-renderer',
+      '#owner #subscribe-button',
+      'ytd-video-owner-renderer #subscribe-button',
+      '#channel-header ytd-subscribe-button-renderer',
+      '#inner-header-container #subscribe-button'
+    ];
+
+    let anchor = null;
+    for (const sel of selectors) {
+      anchor = document.querySelector(sel);
+      if (anchor && anchor.offsetParent !== null) break; // Check if visible
+      anchor = null;
+    }
+
+    if (!anchor) {
+      btn.classList.add('bentube-hidden');
+      return;
+    }
+
+    // Get channel ID
+    channelId = getChannelId();
+    if (!channelId) {
+      btn.classList.add('bentube-hidden');
+      return;
+    }
+
+    // Position button next to the anchor
+    const rect = anchor.getBoundingClientRect();
+    btn.style.top = (rect.top + rect.height / 2 - 20) + 'px'; // Center vertically
+    btn.style.left = (rect.right + 12) + 'px'; // 12px to the right
+
+    // Make sure button is visible and in viewport
+    if (rect.top > 0 && rect.top < window.innerHeight) {
+      btn.classList.remove('bentube-hidden');
+    } else {
+      btn.classList.add('bentube-hidden');
+    }
+  }
+
+  function injectButton() {
+    createButton();
+    updateButtonPosition();
   }
 
   // Menu command to test connection
@@ -320,43 +326,43 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   });
 
   function init() {
-    console.log('[BenTube] Script initialized v3.6.0 on:', location.href);
+    console.log('[BenTube] Script initialized v3.7.0 on:', location.href);
     injectStyles();
+    createButton();
 
     let lastUrl = location.href;
-    let mutationTimeout = null;
+    let updateTimeout = null;
 
+    function scheduleUpdate() {
+      if (updateTimeout) clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(updateButtonPosition, 100);
+    }
+
+    // Watch for DOM changes
     const observer = new MutationObserver(() => {
       // Check for URL change
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         console.log('[BenTube] URL changed to:', location.href);
-        const old = document.getElementById('bentube-btn');
-        if (old) old.remove();
         if (popup) { popup.remove(); popup = null; }
         channelId = null;
-        lastInjectionTime = 0; // Reset throttle on URL change
+        if (btn) btn.classList.add('bentube-hidden');
       }
-
-      // Debounce mutation handling - wait for DOM to settle
-      if (mutationTimeout) clearTimeout(mutationTimeout);
-      mutationTimeout = setTimeout(injectButton, 200);
+      scheduleUpdate();
     });
     observer.observe(document.body, { subtree: true, childList: true });
 
-    // Initial injection attempts - YouTube renders progressively
-    setTimeout(injectButton, 1500);
-    setTimeout(injectButton, 3000);
-    setTimeout(injectButton, 5000);
+    // Update position on scroll and resize
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
 
-    // Periodic check every 3 seconds to re-inject if button was removed
-    setInterval(() => {
-      const btn = document.getElementById('bentube-btn');
-      if (!btn || !document.body.contains(btn)) {
-        lastInjectionTime = 0; // Reset throttle
-        injectButton();
-      }
-    }, 3000);
+    // Initial position updates - YouTube renders progressively
+    setTimeout(updateButtonPosition, 500);
+    setTimeout(updateButtonPosition, 1500);
+    setTimeout(updateButtonPosition, 3000);
+
+    // Periodic position update
+    setInterval(updateButtonPosition, 2000);
   }
 
   if (document.readyState === 'loading') {
