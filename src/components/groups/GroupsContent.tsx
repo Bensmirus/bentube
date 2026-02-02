@@ -10,6 +10,7 @@ import GroupCard from './GroupCard'
 import EditGroupModal from './EditGroupModal'
 import AddChannelModal from '../AddChannelModal'
 import AddPlaylistModal from '../AddPlaylistModal'
+import AddVideoModal from '../AddVideoModal'
 import ConfirmDialog from '../ConfirmDialog'
 
 type Group = {
@@ -61,6 +62,7 @@ export default function GroupsContent() {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
   const [showAddChannelModal, setShowAddChannelModal] = useState(false)
   const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false)
+  const [showAddVideoModal, setShowAddVideoModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -474,7 +476,7 @@ export default function GroupsContent() {
       {/* Main Content with Sidebar */}
       <div className="flex max-w-7xl mx-auto relative">
         {/* Left Sidebar */}
-        <aside className="w-64 border-r p-6 space-y-6 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto z-10">
+        <aside className="w-64 border-r p-6 space-y-6 shrink-0">
           {/* Import Channels */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium">Import</h3>
@@ -538,25 +540,34 @@ export default function GroupsContent() {
             )}
           </div>
 
-          {/* Add Channel */}
+          {/* Add Content */}
           <div className="pt-4 border-t space-y-3">
             <h3 className="text-sm font-medium">Add Content</h3>
-            <button
-              onClick={() => setShowAddChannelModal(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border hover:bg-muted transition-colors"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Add Channel
-            </button>
-            <button
-              onClick={() => setShowAddPlaylistModal(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border hover:bg-muted transition-colors"
-            >
-              <PlaylistIcon className="w-4 h-4" />
-              Import Playlist
-            </button>
+            <div className="space-y-1.5">
+              <button
+                onClick={() => setShowAddChannelModal(true)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium border hover:bg-muted transition-colors text-left"
+              >
+                <ChannelIcon className="w-4 h-4 text-muted-foreground" />
+                <span>Channel</span>
+              </button>
+              <button
+                onClick={() => setShowAddPlaylistModal(true)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium border hover:bg-muted transition-colors text-left"
+              >
+                <PlaylistIcon className="w-4 h-4 text-muted-foreground" />
+                <span>Playlist</span>
+              </button>
+              <button
+                onClick={() => setShowAddVideoModal(true)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium border hover:bg-muted transition-colors text-left"
+              >
+                <VideoIcon className="w-4 h-4 text-muted-foreground" />
+                <span>Video</span>
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground">
-              Add channels or playlists by URL
+              Add content by pasting a YouTube URL
             </p>
           </div>
         </aside>
@@ -626,6 +637,17 @@ export default function GroupsContent() {
         onClose={() => setShowAddPlaylistModal(false)}
         onComplete={() => {
           setShowAddPlaylistModal(false)
+          fetchGroups()
+        }}
+        groups={groups}
+      />
+
+      {/* Add Video Modal */}
+      <AddVideoModal
+        isOpen={showAddVideoModal}
+        onClose={() => setShowAddVideoModal(false)}
+        onComplete={() => {
+          setShowAddVideoModal(false)
           fetchGroups()
         }}
         groups={groups}
@@ -712,6 +734,23 @@ function PlaylistIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h10m-10 4h6" />
+    </svg>
+  )
+}
+
+function ChannelIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
+function VideoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )
 }
