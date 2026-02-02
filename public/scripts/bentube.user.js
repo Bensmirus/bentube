@@ -913,6 +913,18 @@
     `;
     button.title = 'Add to BenTube';
 
+    // CRITICAL: Set position via inline styles (highest CSS priority)
+    // This cannot be overridden by YouTube's stylesheets or JavaScript
+    button.style.cssText = `
+      position: fixed !important;
+      bottom: 20px !important;
+      right: 20px !important;
+      top: auto !important;
+      left: auto !important;
+      z-index: 2147483647 !important;
+      transform: none !important;
+    `;
+
     button.addEventListener('click', (e) => {
       if (e.target.closest('#bentube-settings-btn')) {
         e.preventDefault();
@@ -1080,15 +1092,11 @@
   }
 
   function resetState() {
-    buttonInjected = false;
+    // Only reset channel info, DO NOT remove the button
+    // Removing and re-adding causes visual glitches
     currentChannelId = null;
     currentChannelName = null;
     hidePopover();
-
-    const existingButton = document.querySelector('#bentube-add-button');
-    if (existingButton) {
-      existingButton.remove();
-    }
   }
 
   // ============================================
@@ -1102,9 +1110,12 @@
       const url = location.href;
       if (url !== lastUrl) {
         lastUrl = url;
+        // Just reset channel info, button stays in place
         resetState();
-        setTimeout(tryInjectButton, 1000);
-      } else if (!buttonInjected) {
+      }
+      // Only try to inject if button doesn't exist in DOM
+      if (!document.querySelector('#bentube-add-button')) {
+        buttonInjected = false;
         tryInjectButton();
       }
     }).observe(document.body, { subtree: true, childList: true });
@@ -1129,11 +1140,39 @@
   // Initialize
   // ============================================
 
+  // Safeguard: Re-enforce button position on scroll
+  // YouTube may try to manipulate styles during scroll
+  function enforceButtonPosition() {
+    const button = document.querySelector('#bentube-add-button');
+    if (button) {
+      button.style.cssText = `
+        position: fixed !important;
+        bottom: 20px !important;
+        right: 20px !important;
+        top: auto !important;
+        left: auto !important;
+        z-index: 2147483647 !important;
+        transform: none !important;
+      `;
+    }
+  }
+
   function init() {
     log('Userscript loaded');
     injectStyles();
     setupNavigationObserver();
     tryInjectButton();
+
+    // Re-enforce position on scroll (throttled)
+    let scrollTimeout;
+    window.addEventListener('scroll', () => {
+      if (!scrollTimeout) {
+        scrollTimeout = setTimeout(() => {
+          enforceButtonPosition();
+          scrollTimeout = null;
+        }, 100);
+      }
+    }, { passive: true });
 
     if (typeof GM_registerMenuCommand !== 'undefined') {
       GM_registerMenuCommand('BenTube Settings', showSettingsModal);
