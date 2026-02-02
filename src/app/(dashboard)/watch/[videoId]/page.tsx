@@ -58,6 +58,8 @@ export default function WatchPage() {
   const [videoTags, setVideoTags] = useState<VideoTag[]>([])
   const [selectedTagGroup, setSelectedTagGroup] = useState<string | null>(null)
   const [tagInput, setTagInput] = useState('')
+  const [loadingGroups, setLoadingGroups] = useState(true)
+  const tagDialogRef = useRef<HTMLDivElement>(null)
 
   const { playlist, hasNext, hasPrevious, next, previous, clear: clearPlaylist } = usePlaylist()
 
@@ -244,6 +246,7 @@ export default function WatchPage() {
 
     const currentVideo = video
     const currentUserId = userId
+    setLoadingGroups(true)
 
     async function fetchGroupsAndTags() {
       try {
@@ -265,7 +268,8 @@ export default function WatchPage() {
             })
             .filter(Boolean) as VideoGroup[]
           setVideoGroups(groups)
-          if (groups.length > 0 && !selectedTagGroup) {
+          // Always set to first group to ensure sync with select dropdown
+          if (groups.length > 0) {
             setSelectedTagGroup(groups[0].id)
           }
         }
@@ -289,11 +293,34 @@ export default function WatchPage() {
         }
       } catch (err) {
         console.error('Error fetching groups/tags:', err)
+      } finally {
+        setLoadingGroups(false)
       }
     }
 
     fetchGroupsAndTags()
-  }, [video, userId, selectedTagGroup])
+  }, [video, userId])
+
+  // Click outside to close desktop tag dialog
+  useEffect(() => {
+    if (!showTagDialog) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagDialogRef.current && !tagDialogRef.current.contains(event.target as Node)) {
+        setShowTagDialog(false)
+      }
+    }
+
+    // Delay adding listener to avoid immediate close from the button click
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showTagDialog])
 
   const handleBack = useCallback(() => {
     if (playlist.isActive) {
@@ -647,7 +674,10 @@ export default function WatchPage() {
                       </button>
                       {/* Tag dialog */}
                       {showTagDialog && (
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-[#ffffff] dark:bg-[#262017] border rounded-lg shadow-lg p-4 z-20">
+                        <div
+                          ref={tagDialogRef}
+                          className="absolute right-0 top-full mt-2 w-80 bg-[#ffffff] dark:bg-[#262017] border rounded-lg shadow-lg p-4 z-[200]"
+                        >
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-medium">Manage Tags</h4>
                             <button
@@ -658,7 +688,11 @@ export default function WatchPage() {
                             </button>
                           </div>
 
-                          {videoGroups.length === 0 ? (
+                          {loadingGroups ? (
+                            <div className="flex items-center justify-center py-4">
+                              <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          ) : videoGroups.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
                               This channel isn&apos;t in any group yet. Add it to a group first to use tags.
                             </p>
@@ -722,7 +756,7 @@ export default function WatchPage() {
                                   />
                                   <button
                                     onClick={handleAddTag}
-                                    disabled={!tagInput.trim()}
+                                    disabled={!tagInput.trim() || !selectedTagGroup}
                                     className="px-3 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     Add
@@ -791,12 +825,15 @@ export default function WatchPage() {
 
                 {/* Mobile tag dialog - bottom sheet style */}
                 {showTagDialog && (
-                  <div className="sm:hidden fixed inset-0 z-50">
+                  <div className="sm:hidden fixed inset-0 z-[300]">
                     <div
                       className="absolute inset-0 bg-black/50"
                       onClick={() => setShowTagDialog(false)}
                     />
-                    <div className="absolute bottom-0 left-0 right-0 bg-[#ffffff] dark:bg-[#262017] rounded-t-2xl p-4 animate-slide-up max-h-[70vh] overflow-y-auto">
+                    <div
+                      className="absolute bottom-0 left-0 right-0 bg-[#ffffff] dark:bg-[#262017] rounded-t-2xl p-4 pb-20 animate-slide-up max-h-[70vh] overflow-y-auto"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="w-12 h-1 bg-muted rounded-full mx-auto mb-4" />
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-lg">Manage Tags</h4>
@@ -810,7 +847,11 @@ export default function WatchPage() {
                         </button>
                       </div>
 
-                      {videoGroups.length === 0 ? (
+                      {loadingGroups ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : videoGroups.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                           This channel isn&apos;t in any group yet. Add it to a group first to use tags.
                         </p>
@@ -871,7 +912,7 @@ export default function WatchPage() {
                               />
                               <button
                                 onClick={handleAddTag}
-                                disabled={!tagInput.trim()}
+                                disabled={!tagInput.trim() || !selectedTagGroup}
                                 className="px-5 py-3 text-base bg-accent text-white rounded-xl hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                               >
                                 Add

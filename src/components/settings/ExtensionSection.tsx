@@ -110,8 +110,12 @@ export default function ExtensionSection() {
               <li>Click Tampermonkey icon → Dashboard → Utilities tab</li>
               <li>Under &quot;Import from file&quot;, select <span className="font-mono bg-green-100 dark:bg-green-800/30 px-1 rounded">bentube.user.js</span></li>
               <li>Click Install when prompted</li>
-              <li>Go to YouTube - look for the blue BenTube button</li>
+              <li>Go to YouTube - look for the golden BenTube button next to Subscribe</li>
             </ol>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p><strong>On video pages:</strong> Choose to add just this video or subscribe to the channel</p>
+            <p><strong>On channel pages:</strong> Subscribe to sync all future videos</p>
           </div>
           <button
             onClick={() => setDownloaded(false)}
