@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      4.0.0
+// @version      4.1.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -253,6 +253,64 @@
       background: linear-gradient(135deg, #DAA520, #B8860B);
     }
 
+    .bentube-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .bentube-action {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 2px solid #e5e5e5;
+      border-radius: 10px;
+      cursor: pointer;
+      background: transparent;
+      text-align: left;
+      width: 100%;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .bentube-action:hover {
+      border-color: #B8860B;
+      background: #fef9e7;
+    }
+
+    .bentube-action-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .bentube-action-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    .bentube-action-text {
+      flex: 1;
+    }
+
+    .bentube-action-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: #1f1f1f;
+      margin-bottom: 2px;
+    }
+
+    .bentube-action-desc {
+      font-size: 12px;
+      color: #666;
+    }
+
     /* Dark mode support */
     @media (prefers-color-scheme: dark) {
       .bentube-popup {
@@ -299,12 +357,28 @@
       .bentube-btn-secondary:hover {
         background: #4f4f4f;
       }
+      .bentube-action {
+        border-color: #3f3f3f;
+      }
+      .bentube-action:hover {
+        background: #2a2518;
+      }
+      .bentube-action-title {
+        color: #fff;
+      }
+      .bentube-action-desc {
+        color: #aaa;
+      }
     }
   `;
 
   const WAVEFORM_SVG = '<svg viewBox="0 0 24 24"><rect x="1" y="10" width="2" height="4" rx="0.5"/><rect x="4" y="7" width="2" height="10" rx="0.5"/><rect x="7" y="4" width="2" height="16" rx="0.5"/><rect x="10" y="8" width="2" height="8" rx="0.5"/><rect x="13" y="3" width="2" height="18" rx="0.5"/><rect x="16" y="6" width="2" height="12" rx="0.5"/><rect x="19" y="9" width="2" height="6" rx="0.5"/><rect x="22" y="11" width="1" height="2" rx="0.5"/></svg>';
 
   const LOGO_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"/></svg>';
+
+  const VIDEO_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+  const CHANNEL_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>';
 
   // ============================================
   // Utility Functions
@@ -396,6 +470,15 @@
   // Channel Detection
   // ============================================
 
+  function getVideoId() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get('v');
+    if (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      return videoId;
+    }
+    return null;
+  }
+
   function getChannelId() {
     // Method 1: Meta tag (most reliable)
     const meta = document.querySelector('meta[itemprop="channelId"]');
@@ -453,8 +536,10 @@
       this.button = null;
       this.popup = null;
       this.channelId = null;
+      this.videoId = null;
       this.position = { top: 0, left: 0 };
       this.popupCloseHandler = null;
+      this.selectedAction = null; // 'video' or 'channel'
     }
 
     init() {
@@ -509,9 +594,11 @@
       }
     }
 
-    show(position, channelId) {
+    show(position, channelId, videoId = null) {
       this.position = position;
       this.channelId = channelId;
+      this.videoId = videoId;
+      this.selectedAction = null;
 
       this.button.style.top = position.top + 'px';
       this.button.style.left = position.left + 'px';
@@ -588,7 +675,48 @@
         return;
       }
 
-      this.showGroups(res.data);
+      // If on a video page and no action selected yet, show action choice
+      if (this.videoId && !this.selectedAction) {
+        this.showActionChoice(res.data);
+      } else {
+        this.showGroups(res.data);
+      }
+    }
+
+    showActionChoice(groups) {
+      const content = this.popup.querySelector('.bentube-content');
+      content.innerHTML = `
+        <div class="bentube-actions">
+          <button class="bentube-action" data-action="video">
+            <span class="bentube-action-icon" style="background: linear-gradient(135deg, #EF4444, #DC2626)">
+              ${VIDEO_SVG}
+            </span>
+            <span class="bentube-action-text">
+              <div class="bentube-action-title">Add this video only</div>
+              <div class="bentube-action-desc">Save just this video to a group</div>
+            </span>
+          </button>
+          <button class="bentube-action" data-action="channel">
+            <span class="bentube-action-icon" style="background: linear-gradient(135deg, #B8860B, #8B6914)">
+              ${CHANNEL_SVG}
+            </span>
+            <span class="bentube-action-text">
+              <div class="bentube-action-title">Subscribe to channel</div>
+              <div class="bentube-action-desc">Auto-sync all future videos</div>
+            </span>
+          </button>
+        </div>
+      `;
+
+      // Store groups for later use
+      this._cachedGroups = groups;
+
+      content.querySelectorAll('.bentube-action').forEach(el => {
+        el.addEventListener('click', () => {
+          this.selectedAction = el.dataset.action;
+          this.showGroups(this._cachedGroups);
+        });
+      });
     }
 
     showGroups(groups) {
@@ -610,13 +738,27 @@
       const content = this.popup.querySelector('.bentube-content');
       content.innerHTML = '<div class="bentube-status">Adding...</div>';
 
-      const res = await apiRequest('/api/extension/add-channel', {
-        method: 'POST',
-        body: JSON.stringify({ youtubeChannelId: this.channelId, groupId })
-      });
+      let res;
+      let successMessage;
+
+      if (this.selectedAction === 'video' && this.videoId) {
+        // Add single video
+        res = await apiRequest('/api/extension/add-video', {
+          method: 'POST',
+          body: JSON.stringify({ youtubeVideoId: this.videoId, groupId })
+        });
+        successMessage = res.data?.alreadyExists ? 'Video already exists!' : 'Video added!';
+      } else {
+        // Subscribe to channel
+        res = await apiRequest('/api/extension/add-channel', {
+          method: 'POST',
+          body: JSON.stringify({ youtubeChannelId: this.channelId, groupId })
+        });
+        successMessage = res.data?.alreadyInGroup ? 'Already subscribed!' : 'Channel added!';
+      }
 
       if (res.success) {
-        content.innerHTML = `<div class="bentube-status success">${res.data?.alreadyInGroup ? 'Already in group!' : 'Channel added!'}</div>`;
+        content.innerHTML = `<div class="bentube-status success">${successMessage}</div>`;
         setTimeout(() => this.hidePopup(), 1500);
       } else {
         this.showError(res.error);
@@ -684,7 +826,7 @@
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v4.0.0');
+      console.log('[BenTube] Initialized v4.1.0');
     }
 
     onNavigate() {
@@ -695,9 +837,10 @@
     tryPosition(attempts = 0) {
       const position = getSubscribeButtonPosition();
       const channelId = getChannelId();
+      const videoId = getVideoId();
 
       if (position && channelId) {
-        this.ui.show(position, channelId);
+        this.ui.show(position, channelId, videoId);
       } else if (attempts < CONFIG.retryAttempts) {
         setTimeout(() => this.tryPosition(attempts + 1), CONFIG.retryDelay);
       }
