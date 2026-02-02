@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      4.2.1
+// @version      5.0.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -11,8 +11,6 @@
 // @grant        GM_registerMenuCommand
 // @noframes
 // @connect      ben-tube.com
-// @connect      localhost
-// @connect      *
 // @run-at       document-end
 // ==/UserScript==
 
@@ -28,7 +26,13 @@
     storageKey: 'bentube_api_key',
     retryAttempts: 20,
     retryDelay: 300,
-    requestTimeout: 15000
+    requestTimeout: 15000,
+    buttonSize: 40,
+    popupWidth: 300,
+    popupMaxHeight: 350,
+    urlCheckDebounce: 100,
+    navigationDelay: 500,
+    successMessageDelay: 1500
   };
 
   // ============================================
@@ -390,6 +394,16 @@
     return div.innerHTML;
   }
 
+  function isValidColor(color) {
+    if (!color || typeof color !== 'string') return false;
+    // Allow: #fff, #ffffff, named colors (no spaces/special chars)
+    return /^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(color) || /^[a-zA-Z]{3,20}$/.test(color);
+  }
+
+  function sanitizeColor(color, fallback = '#3B82F6') {
+    return isValidColor(color) ? color : fallback;
+  }
+
   function isEmoji(str) {
     if (!str) return false;
     return /^[\p{Emoji}\u200d]+$/u.test(str) || str.length <= 2;
@@ -397,7 +411,7 @@
 
   function renderIcon(icon) {
     if (icon === 'waveform') return WAVEFORM_SVG;
-    if (isEmoji(icon)) return `<span style="font-size:14px">${icon}</span>`;
+    if (isEmoji(icon)) return `<span style="font-size:14px">${escapeHtml(icon)}</span>`;
     return '<span style="font-size:14px">📁</span>';
   }
 
@@ -408,7 +422,8 @@
   function getApiKey() {
     try {
       return GM_getValue(CONFIG.storageKey, '');
-    } catch {
+    } catch (e) {
+      console.warn('[BenTube] GM_getValue failed, using localStorage:', e);
       return localStorage.getItem(CONFIG.storageKey) || '';
     }
   }
@@ -416,7 +431,8 @@
   function setApiKey(key) {
     try {
       GM_setValue(CONFIG.storageKey, key);
-    } catch {
+    } catch (e) {
+      console.warn('[BenTube] GM_setValue failed, using localStorage:', e);
       localStorage.setItem(CONFIG.storageKey, key);
     }
   }
@@ -452,7 +468,8 @@
             } else {
               resolve({ success: false, error: data.error || `HTTP ${response.status}` });
             }
-          } catch {
+          } catch (e) {
+            console.warn('[BenTube] Failed to parse response:', e);
             resolve({ success: false, error: 'Invalid response' });
           }
         },
@@ -479,27 +496,57 @@
     return null;
   }
 
+  // Cache for channel ID to avoid repeated DOM queries
+  let cachedChannelId = null;
+  let cachedChannelUrl = null;
+
   function getChannelId() {
+    // Return cached value if URL hasn't changed
+    if (cachedChannelUrl === location.href && cachedChannelId) {
+      return cachedChannelId;
+    }
+
     // Method 1: Meta tag (most reliable)
     const meta = document.querySelector('meta[itemprop="channelId"]');
-    if (meta?.content) return meta.content;
+    if (meta?.content) {
+      cachedChannelId = meta.content;
+      cachedChannelUrl = location.href;
+      return cachedChannelId;
+    }
 
     // Method 2: URL pattern
     const urlMatch = location.pathname.match(/\/channel\/(UC[\w-]+)/);
-    if (urlMatch) return urlMatch[1];
+    if (urlMatch) {
+      cachedChannelId = urlMatch[1];
+      cachedChannelUrl = location.href;
+      return cachedChannelId;
+    }
 
-    // Method 3: Page data
+    // Method 3: Page data (limit search to first 10 scripts for performance)
     try {
-      for (const script of document.querySelectorAll('script')) {
-        const text = script.textContent || '';
+      const scripts = document.querySelectorAll('script');
+      const limit = Math.min(scripts.length, 10);
+      for (let i = 0; i < limit; i++) {
+        const text = scripts[i].textContent || '';
         if (text.includes('ytInitialData')) {
           const match = text.match(/"(?:channelId|externalId)":"(UC[\w-]+)"/);
-          if (match) return match[1];
+          if (match) {
+            cachedChannelId = match[1];
+            cachedChannelUrl = location.href;
+            return cachedChannelId;
+          }
         }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[BenTube] Error parsing page data:', e);
+    }
 
     return null;
+  }
+
+  function clearChannelCache() {
+    cachedChannelId = null;
+    cachedChannelUrl = null;
   }
 
   function getSubscribeButtonPosition() {
@@ -725,8 +772,8 @@
     showGroups(groups) {
       const content = this.popup.querySelector('.bentube-content');
       content.innerHTML = groups.map(g => `
-        <button class="bentube-group" data-id="${g.id}">
-          <span class="bentube-icon" style="background:${escapeHtml(g.color || '#3B82F6')}">${renderIcon(g.icon)}</span>
+        <button class="bentube-group" data-id="${escapeHtml(g.id)}">
+          <span class="bentube-icon" style="background:${sanitizeColor(g.color)}">${renderIcon(g.icon)}</span>
           <span class="bentube-name">${escapeHtml(g.name)}</span>
           <span class="bentube-count">${g.channelCount || 0}</span>
         </button>
@@ -762,7 +809,7 @@
 
       if (res.success) {
         content.innerHTML = `<div class="bentube-status success">${successMessage}</div>`;
-        setTimeout(() => this.hidePopup(), 1500);
+        setTimeout(() => this.hidePopup(), CONFIG.successMessageDelay);
       } else {
         this.showError(res.error);
       }
@@ -812,31 +859,38 @@
       this.lastUrl = '';
       this.observer = null;
       this.positionLocked = false; // Once position is set, don't change it
+      this.urlCheckTimeout = null; // For debouncing URL checks
     }
 
     init() {
       this.ui.init();
       this.lastUrl = location.href;
 
-      // Watch for SPA navigation
+      // Watch for SPA navigation with debounced URL checking
       this.observer = new MutationObserver(() => {
-        if (location.href !== this.lastUrl) {
-          this.lastUrl = location.href;
-          this.onNavigate();
-        }
+        // Debounce URL checks to avoid excessive processing
+        if (this.urlCheckTimeout) return;
+        this.urlCheckTimeout = setTimeout(() => {
+          this.urlCheckTimeout = null;
+          if (location.href !== this.lastUrl) {
+            this.lastUrl = location.href;
+            this.onNavigate();
+          }
+        }, CONFIG.urlCheckDebounce);
       });
       this.observer.observe(document.body, { subtree: true, childList: true });
 
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v4.2.1');
+      console.log('[BenTube] Initialized v5.0.0');
     }
 
     onNavigate() {
       this.positionLocked = false; // Allow repositioning on new page
+      clearChannelCache(); // Clear cached channel ID for new page
       this.ui.hide();
-      setTimeout(() => this.tryPosition(), 500);
+      setTimeout(() => this.tryPosition(), CONFIG.navigationDelay);
     }
 
     tryPosition(attempts = 0) {
