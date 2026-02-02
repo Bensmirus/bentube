@@ -126,11 +126,16 @@
     const style = document.createElement('style');
     style.textContent = `
       #bentube-add-button {
-        display: inline-flex;
+        position: fixed !important;
+        bottom: 20px !important;
+        right: 20px !important;
+        top: auto !important;
+        left: auto !important;
+        z-index: 2147483647 !important;
+        display: inline-flex !important;
         align-items: center;
         gap: 6px;
         padding: 8px 16px;
-        margin-left: 8px;
         background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
         color: white;
         border: none;
@@ -139,18 +144,13 @@
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s ease;
-        vertical-align: middle;
+        /* Only transition visual properties, NOT position-related ones */
+        transition: background 0.2s ease, box-shadow 0.2s ease;
       }
 
       #bentube-add-button:hover {
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-        transform: scale(1.02);
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-      }
-
-      #bentube-add-button:active {
-        transform: scale(0.98);
       }
 
       #bentube-add-button svg {
@@ -179,23 +179,21 @@
       }
 
       .bentube-popover {
-        position: absolute;
-        z-index: 9999;
+        position: fixed !important;
+        z-index: 2147483646 !important;
         width: 280px;
         background: white;
         border-radius: 12px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         opacity: 0;
         visibility: hidden;
-        transform: translateY(-8px);
-        transition: all 0.2s ease;
+        transition: opacity 0.2s ease, visibility 0.2s ease;
         font-family: 'Roboto', 'Arial', sans-serif;
       }
 
       .bentube-popover.visible {
         opacity: 1;
         visibility: visible;
-        transform: translateY(0);
       }
 
       html[dark] .bentube-popover,
@@ -925,7 +923,7 @@
 
       e.preventDefault();
       e.stopPropagation();
-      handleButtonClick(e);
+      handleButtonClick();
     });
 
     return button;
@@ -965,15 +963,18 @@
     return popover;
   }
 
-  function showPopover(button) {
+  function showPopover() {
     if (!popoverElement) {
       popoverElement = createPopover();
-      document.body.appendChild(popoverElement);
+      document.documentElement.appendChild(popoverElement);
     }
 
-    const rect = button.getBoundingClientRect();
-    popoverElement.style.top = `${rect.bottom + window.scrollY + 8}px`;
-    popoverElement.style.left = `${rect.left + window.scrollX}px`;
+    // Position popover above the fixed button (bottom-right corner)
+    popoverElement.style.position = 'fixed';
+    popoverElement.style.bottom = '70px';
+    popoverElement.style.right = '20px';
+    popoverElement.style.top = 'auto';
+    popoverElement.style.left = 'auto';
 
     const channelNameEl = popoverElement.querySelector('.bentube-channel-name');
     channelNameEl.textContent = currentChannelName || 'This channel';
@@ -1042,7 +1043,7 @@
     }
   }
 
-  function handleButtonClick(e) {
+  function handleButtonClick() {
     if (!currentChannelId) {
       currentChannelId = getChannelIdFromPage();
       if (!currentChannelId) {
@@ -1051,7 +1052,7 @@
       }
     }
 
-    showPopover(e.currentTarget);
+    showPopover();
   }
 
   // ============================================
@@ -1061,48 +1062,21 @@
   function injectButton() {
     if (buttonInjected) return;
 
-    const selectors = [
-      '#owner #subscribe-button',
-      '#above-the-fold #subscribe-button',
-      'ytd-watch-metadata #subscribe-button',
-      '#meta #subscribe-button',
-      'ytd-video-owner-renderer #subscribe-button',
-      '#channel-header #subscribe-button',
-      '#inner-header-container #subscribe-button',
-      '#subscribe-button'
-    ];
-
-    let subscribeContainer = null;
-    for (const selector of selectors) {
-      subscribeContainer = document.querySelector(selector);
-      if (subscribeContainer) {
-        log('Found subscribe button with selector:', selector);
-        break;
-      }
-    }
-
-    if (!subscribeContainer) return;
-
-    let parent = subscribeContainer.parentElement;
-    for (let i = 0; i < 3 && parent; i++) {
-      if (parent.querySelector('#bentube-add-button')) {
-        buttonInjected = true;
-        return;
-      }
-      parent = parent.parentElement;
+    // Check if button already exists
+    if (document.querySelector('#bentube-add-button')) {
+      buttonInjected = true;
+      return;
     }
 
     currentChannelId = getChannelIdFromPage();
     currentChannelName = getChannelNameFromPage();
 
     const button = createBenTubeButton();
-
-    if (subscribeContainer.parentElement) {
-      subscribeContainer.parentElement.insertBefore(button, subscribeContainer.nextSibling);
-    }
+    // Append to documentElement (html) to avoid YouTube's body transforms
+    document.documentElement.appendChild(button);
     buttonInjected = true;
 
-    log('Button injected', { channelId: currentChannelId, channelName: currentChannelName });
+    log('Button injected (fixed position)', { channelId: currentChannelId, channelName: currentChannelName });
   }
 
   function resetState() {
