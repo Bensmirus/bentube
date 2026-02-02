@@ -1,37 +1,24 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      2.1.0
+// @version      3.9.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
-// @grant        GM_setValue
-// @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
 // @grant        GM_registerMenuCommand
-// @grant        unsafeWindow
 // @noframes
 // @connect      ben-tube.com
 // @connect      localhost
 // @connect      *
-// @run-at       document-idle
+// @run-at       document-end
 // ==/UserScript==
 
 (function() {
   'use strict';
 
-  // ============================================
-  // Configuration & Storage
-  // ============================================
-
   const DEFAULT_SERVER_URL = 'https://ben-tube.com';
-  const DEFAULT_API_KEY = ''; // DO NOT EDIT - Generated automatically
-  const STORAGE_KEY_PREFIX = 'bentube_';
-  const DEBUG = false;
-
-  function log(...args) {
-    if (DEBUG) console.log('BenTube:', ...args);
-  }
+  const DEFAULT_API_KEY = '';
 
   function escapeHtml(text) {
     const div = document.createElement('div');
@@ -40,1168 +27,409 @@
   }
 
   function getSettings() {
-    // Always use embedded defaults - no storage override
     return {
       serverUrl: DEFAULT_SERVER_URL,
       apiKey: DEFAULT_API_KEY
     };
   }
 
-  function saveSettings(serverUrl, apiKey) {
-    const url = serverUrl || DEFAULT_SERVER_URL;
-    const key = apiKey || '';
+  // Waveform icon SVG (matches the app)
+  const WAVEFORM_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><rect x="1" y="10" width="2" height="4" rx="0.5"/><rect x="4" y="7" width="2" height="10" rx="0.5"/><rect x="7" y="4" width="2" height="16" rx="0.5"/><rect x="10" y="8" width="2" height="8" rx="0.5"/><rect x="13" y="3" width="2" height="18" rx="0.5"/><rect x="16" y="6" width="2" height="12" rx="0.5"/><rect x="19" y="9" width="2" height="6" rx="0.5"/><rect x="22" y="11" width="1" height="2" rx="0.5"/></svg>';
 
-    try {
-      GM_setValue(STORAGE_KEY_PREFIX + 'serverUrl', url);
-      GM_setValue(STORAGE_KEY_PREFIX + 'apiKey', key);
-      log('Settings saved to GM storage');
-    } catch (e) {
-      log('GM_setValue failed:', e);
-    }
-
-    try {
-      localStorage.setItem(STORAGE_KEY_PREFIX + 'serverUrl', url);
-      localStorage.setItem(STORAGE_KEY_PREFIX + 'apiKey', key);
-      log('Settings saved to localStorage');
-    } catch (e) {
-      log('localStorage save failed:', e);
-    }
+  function isEmoji(str) {
+    if (!str) return false;
+    const emojiRegex = /^[\p{Emoji}\u200d]+$/u;
+    return emojiRegex.test(str) || str.length <= 2;
   }
 
-  let settingsShownThisSession = false;
-
-  // ============================================
-  // API Functions
-  // ============================================
+  function renderIcon(icon) {
+    if (icon === 'waveform') return WAVEFORM_SVG;
+    if (isEmoji(icon)) return icon;
+    return '📁';
+  }
 
   function apiRequest(endpoint, options = {}) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const settings = getSettings();
-
       if (!settings.apiKey) {
-        resolve({ success: false, error: 'API key not configured. Click the gear icon to configure.' });
+        resolve({ success: false, error: 'API key not configured' });
         return;
       }
-
-      const url = `${settings.serverUrl}${endpoint}`;
-      log('Making request to', url);
-
       GM_xmlhttpRequest({
         method: options.method || 'GET',
-        url: url,
+        url: settings.serverUrl + endpoint,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${settings.apiKey}`,
+          'Authorization': 'Bearer ' + settings.apiKey,
           ...options.headers
         },
         data: options.body,
+        timeout: 15000,
         onload: function(response) {
-          log('Response status', response.status);
           try {
             const data = JSON.parse(response.responseText);
-            log('Response data', data);
-
             if (response.status >= 200 && response.status < 300) {
               resolve(data);
             } else {
-              resolve({ success: false, error: data.error || `HTTP ${response.status}` });
+              resolve({ success: false, error: data.error || 'HTTP ' + response.status });
             }
           } catch (e) {
-            resolve({ success: false, error: 'Invalid JSON response' });
+            resolve({ success: false, error: 'Invalid response' });
           }
         },
-        onerror: function(error) {
-          log('API error:', error);
-          resolve({ success: false, error: 'Network error - check if server is running' });
+        onerror: function() {
+          resolve({ success: false, error: 'Network error' });
+        },
+        ontimeout: function() {
+          resolve({ success: false, error: 'Request timed out' });
         }
       });
     });
   }
 
-  // ============================================
-  // Styles
-  // ============================================
-
   function injectStyles() {
+    if (document.getElementById('bentube-styles')) return;
     const style = document.createElement('style');
+    style.id = 'bentube-styles';
     style.textContent = `
-      #bentube-add-button {
+      #bentube-btn {
         position: fixed !important;
-        bottom: 20px !important;
-        right: 20px !important;
-        top: auto !important;
-        left: auto !important;
         z-index: 2147483647 !important;
-        display: inline-flex !important;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-        color: white;
-        border: none;
-        border-radius: 20px;
-        font-family: 'Roboto', 'Arial', sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        /* Only transition visual properties, NOT position-related ones */
-        transition: background 0.2s ease, box-shadow 0.2s ease;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 40px !important;
+        height: 40px !important;
+        background: linear-gradient(135deg, #B8860B, #8B6914) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 50% !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        transform: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
       }
-
-      #bentube-add-button:hover {
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      #bentube-btn:hover {
+        background: linear-gradient(135deg, #DAA520, #B8860B) !important;
       }
-
-      #bentube-add-button svg {
-        width: 16px;
-        height: 16px;
+      #bentube-btn svg {
+        width: 20px !important;
+        height: 20px !important;
       }
-
-      #bentube-settings-btn {
-        background: none;
-        border: none;
-        padding: 4px;
-        margin-left: 4px;
-        cursor: pointer;
-        opacity: 0.7;
-        transition: opacity 0.2s;
+      #bentube-btn.bentube-hidden {
+        display: none !important;
       }
-
-      #bentube-settings-btn:hover {
-        opacity: 1;
-      }
-
-      #bentube-settings-btn svg {
-        width: 14px;
-        height: 14px;
-        fill: white;
-      }
-
-      .bentube-popover {
+      .bentube-popup {
         position: fixed !important;
         z-index: 2147483646 !important;
-        width: 280px;
+        width: 300px;
         background: white;
         border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.2s ease, visibility 0.2s ease;
-        font-family: 'Roboto', 'Arial', sans-serif;
-      }
-
-      .bentube-popover.visible {
-        opacity: 1;
-        visibility: visible;
-      }
-
-      html[dark] .bentube-popover,
-      [dark] .bentube-popover {
-        background: #1f1f1f;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-      }
-
-      .bentube-popover-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-bottom: 1px solid #e5e5e5;
-        font-weight: 600;
-        font-size: 14px;
-        color: #1f1f1f;
-      }
-
-      html[dark] .bentube-popover-header,
-      [dark] .bentube-popover-header {
-        border-bottom-color: #3f3f3f;
-        color: #fff;
-      }
-
-      .bentube-popover-close {
-        background: none;
-        border: none;
-        font-size: 20px;
-        color: #666;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-      }
-
-      .bentube-popover-close:hover {
-        color: #333;
-      }
-
-      html[dark] .bentube-popover-close,
-      [dark] .bentube-popover-close {
-        color: #aaa;
-      }
-
-      html[dark] .bentube-popover-close:hover,
-      [dark] .bentube-popover-close:hover {
-        color: #fff;
-      }
-
-      .bentube-popover-content {
-        padding: 12px;
-        max-height: 300px;
-        overflow-y: auto;
-      }
-
-      .bentube-channel-info {
-        padding: 8px 12px;
-        background: #f5f5f5;
-        border-radius: 8px;
-        margin-bottom: 12px;
-      }
-
-      html[dark] .bentube-channel-info,
-      [dark] .bentube-channel-info {
-        background: #2f2f2f;
-      }
-
-      .bentube-channel-name {
-        font-size: 13px;
-        font-weight: 500;
-        color: #1f1f1f;
-      }
-
-      html[dark] .bentube-channel-name,
-      [dark] .bentube-channel-name {
-        color: #fff;
-      }
-
-      .bentube-groups-list {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .bentube-group-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        background: transparent;
-        border: 1px solid #e5e5e5;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        text-align: left;
-        width: 100%;
-      }
-
-      html[dark] .bentube-group-item,
-      [dark] .bentube-group-item {
-        border-color: #3f3f3f;
-      }
-
-      .bentube-group-item:hover {
-        background: #f5f5f5;
-        border-color: #3B82F6;
-      }
-
-      html[dark] .bentube-group-item:hover,
-      [dark] .bentube-group-item:hover {
-        background: #2f2f2f;
-      }
-
-      .bentube-group-icon {
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        font-size: 14px;
-      }
-
-      .bentube-group-name {
-        flex: 1;
-        font-size: 14px;
-        font-weight: 500;
-        color: #1f1f1f;
-      }
-
-      html[dark] .bentube-group-name,
-      [dark] .bentube-group-name {
-        color: #fff;
-      }
-
-      .bentube-group-count {
-        font-size: 12px;
-        color: #666;
-        background: #e5e5e5;
-        padding: 2px 8px;
-        border-radius: 10px;
-      }
-
-      html[dark] .bentube-group-count,
-      [dark] .bentube-group-count {
-        background: #3f3f3f;
-        color: #aaa;
-      }
-
-      .bentube-loading {
-        text-align: center;
-        padding: 20px;
-        color: #666;
-        font-size: 13px;
-      }
-
-      html[dark] .bentube-loading,
-      [dark] .bentube-loading {
-        color: #aaa;
-      }
-
-      .bentube-error {
-        text-align: center;
-        padding: 16px;
-        color: #dc2626;
-        font-size: 13px;
-      }
-
-      .bentube-empty {
-        text-align: center;
-        padding: 16px;
-        color: #666;
-        font-size: 13px;
-      }
-
-      html[dark] .bentube-empty,
-      [dark] .bentube-empty {
-        color: #aaa;
-      }
-
-      .bentube-popover-footer {
-        padding: 8px 16px;
-        border-top: 1px solid #e5e5e5;
-        min-height: 32px;
-      }
-
-      html[dark] .bentube-popover-footer,
-      [dark] .bentube-popover-footer {
-        border-top-color: #3f3f3f;
-      }
-
-      .bentube-status {
-        font-size: 12px;
-        text-align: center;
-      }
-
-      .bentube-status.loading {
-        color: #666;
-      }
-
-      .bentube-status.success {
-        color: #16a34a;
-      }
-
-      .bentube-status.error {
-        color: #dc2626;
-      }
-
-      html[dark] .bentube-status.loading,
-      [dark] .bentube-status.loading {
-        color: #aaa;
-      }
-
-      .bentube-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.2s ease;
-      }
-
-      .bentube-modal-overlay.visible {
-        opacity: 1;
-        visibility: visible;
-      }
-
-      .bentube-modal {
-        background: white;
-        border-radius: 16px;
-        width: 360px;
-        max-width: 90vw;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        transform: scale(0.9);
-        transition: transform 0.2s ease;
-      }
-
-      .bentube-modal-overlay.visible .bentube-modal {
-        transform: scale(1);
-      }
-
-      html[dark] .bentube-modal,
-      [dark] .bentube-modal {
-        background: #1f1f1f;
-      }
-
-      .bentube-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 20px;
-        border-bottom: 1px solid #e5e5e5;
-      }
-
-      html[dark] .bentube-modal-header,
-      [dark] .bentube-modal-header {
-        border-bottom-color: #3f3f3f;
-      }
-
-      .bentube-modal-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #1f1f1f;
-      }
-
-      html[dark] .bentube-modal-title,
-      [dark] .bentube-modal-title {
-        color: #fff;
-      }
-
-      .bentube-modal-body {
-        padding: 20px;
-      }
-
-      .bentube-form-group {
-        margin-bottom: 16px;
-      }
-
-      .bentube-form-group label {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        color: #666;
-        margin-bottom: 6px;
-      }
-
-      html[dark] .bentube-form-group label,
-      [dark] .bentube-form-group label {
-        color: #aaa;
-      }
-
-      .bentube-form-group input {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #e5e5e5;
-        border-radius: 8px;
-        font-size: 14px;
-        background: white;
-        color: #1f1f1f;
-        box-sizing: border-box;
-      }
-
-      html[dark] .bentube-form-group input,
-      [dark] .bentube-form-group input {
-        background: #2f2f2f;
-        border-color: #3f3f3f;
-        color: #fff;
-      }
-
-      .bentube-form-group input:focus {
-        outline: none;
-        border-color: #3B82F6;
-      }
-
-      .bentube-modal-footer {
-        padding: 16px 20px;
-        border-top: 1px solid #e5e5e5;
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-      }
-
-      html[dark] .bentube-modal-footer,
-      [dark] .bentube-modal-footer {
-        border-top-color: #3f3f3f;
-      }
-
-      .bentube-btn {
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        border: none;
-      }
-
-      .bentube-btn-secondary {
-        background: #e5e5e5;
-        color: #1f1f1f;
-      }
-
-      .bentube-btn-secondary:hover {
-        background: #d5d5d5;
-      }
-
-      html[dark] .bentube-btn-secondary,
-      [dark] .bentube-btn-secondary {
-        background: #3f3f3f;
-        color: #fff;
-      }
-
-      html[dark] .bentube-btn-secondary:hover,
-      [dark] .bentube-btn-secondary:hover {
-        background: #4f4f4f;
-      }
-
-      .bentube-btn-primary {
-        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-        color: white;
-      }
-
-      .bentube-btn-primary:hover {
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-      }
-
-      .bentube-connection-status {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 12px;
-        background: #f5f5f5;
-        border-radius: 8px;
-        margin-bottom: 16px;
-      }
-
-      html[dark] .bentube-connection-status,
-      [dark] .bentube-connection-status {
-        background: #2f2f2f;
-      }
-
-      .bentube-status-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #666;
-      }
-
-      .bentube-status-dot.connected {
-        background: #16a34a;
-      }
-
-      .bentube-status-dot.disconnected {
-        background: #dc2626;
-      }
-
-      .bentube-status-dot.checking {
-        background: #f59e0b;
-        animation: pulse 1s infinite;
-      }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-
-      .bentube-status-text {
-        font-size: 13px;
-        color: #666;
-      }
-
-      html[dark] .bentube-status-text,
-      [dark] .bentube-status-text {
-        color: #aaa;
-      }
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        font-family: 'Roboto', sans-serif;
+      }
+      html[dark] .bentube-popup { background: #1f1f1f; }
+      .bentube-popup-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 12px 16px; border-bottom: 1px solid #e5e5e5;
+        font-weight: 600; font-size: 14px;
+      }
+      html[dark] .bentube-popup-header { border-color: #3f3f3f; color: #fff; }
+      .bentube-popup-content { padding: 12px; max-height: 300px; overflow-y: auto; }
+      .bentube-group {
+        display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+        border: 1px solid #e5e5e5; border-radius: 8px; cursor: pointer; width: 100%;
+        background: transparent; text-align: left; margin-bottom: 4px;
+      }
+      html[dark] .bentube-group { border-color: #3f3f3f; }
+      .bentube-group:hover { background: #f5f5f5; border-color: #B8860B; }
+      html[dark] .bentube-group:hover { background: #2f2f2f; }
+      .bentube-icon {
+        width: 28px; height: 28px; border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px;
+      }
+      .bentube-icon svg { fill: white; }
+      .bentube-name { flex: 1; font-size: 14px; font-weight: 500; }
+      html[dark] .bentube-name { color: #fff; }
+      .bentube-count { font-size: 12px; color: #666; background: #e5e5e5; padding: 2px 8px; border-radius: 10px; }
+      html[dark] .bentube-count { background: #3f3f3f; color: #aaa; }
+      .bentube-status { padding: 12px 16px; text-align: center; font-size: 13px; }
+      .bentube-status.success { color: #16a34a; }
+      .bentube-status.error { color: #dc2626; }
+      .bentube-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #666; padding: 0 4px; }
+      html[dark] .bentube-close { color: #aaa; }
     `;
     document.head.appendChild(style);
   }
 
-  // ============================================
-  // State
-  // ============================================
+  let channelId = null;
+  let popup = null;
+  let btn = null;
+  let fixedTop = null;
+  let fixedLeft = null;
 
-  let currentChannelId = null;
-  let currentChannelName = null;
-  let buttonInjected = false;
-  let popoverElement = null;
-  let modalElement = null;
+  function getChannelId() {
+    const meta = document.querySelector('meta[itemprop="channelId"]');
+    if (meta && meta.content) return meta.content;
 
-  // ============================================
-  // Channel Detection
-  // ============================================
-
-  function getChannelIdFromPage() {
-    log('Attempting to detect channel ID...');
-
-    try {
-      const ytData = unsafeWindow.ytInitialData;
-      if (ytData) {
-        log('Found ytInitialData via unsafeWindow');
-        if (ytData.contents?.twoColumnWatchNextResults?.results?.results?.contents) {
-          const contents = ytData.contents.twoColumnWatchNextResults.results.results.contents;
-          for (const content of contents) {
-            if (content.videoSecondaryInfoRenderer?.owner?.videoOwnerRenderer?.navigationEndpoint?.browseEndpoint?.browseId) {
-              const id = content.videoSecondaryInfoRenderer.owner.videoOwnerRenderer.navigationEndpoint.browseEndpoint.browseId;
-              log('Found channel ID from ytInitialData (video page):', id);
-              return id;
-            }
-          }
-        }
-        if (ytData.metadata?.channelMetadataRenderer?.externalId) {
-          const id = ytData.metadata.channelMetadataRenderer.externalId;
-          log('Found channel ID from ytInitialData (channel page):', id);
-          return id;
-        }
-        if (ytData.header?.c4TabbedHeaderRenderer?.channelId) {
-          const id = ytData.header.c4TabbedHeaderRenderer.channelId;
-          log('Found channel ID from ytInitialData header:', id);
-          return id;
-        }
-      }
-    } catch (e) {
-      log('ytInitialData method failed:', e);
-    }
-
-    const metaChannelId = document.querySelector('meta[itemprop="channelId"]');
-    if (metaChannelId) {
-      const id = metaChannelId.content;
-      log('Found channel ID from meta tag:', id);
-      return id;
-    }
-
-    const channelLink = document.querySelector('link[itemprop="url"][href*="/channel/"]');
-    if (channelLink) {
-      const match = channelLink.href.match(/\/channel\/(UC[\w-]+)/);
-      if (match) {
-        log('Found channel ID from canonical link:', match[1]);
-        return match[1];
-      }
-    }
-
-    const ownerSelectors = [
-      '#owner a[href*="/channel/"]',
-      '#owner a[href^="/@"]',
-      'ytd-video-owner-renderer a[href*="/channel/"]',
-      'ytd-video-owner-renderer a[href^="/@"]',
-      '#channel-name a[href*="/channel/"]',
-      '#upload-info a[href*="/channel/"]',
-      'a.ytd-video-owner-renderer[href*="/channel/"]'
-    ];
-
-    for (const selector of ownerSelectors) {
-      const link = document.querySelector(selector);
-      if (link) {
-        const match = link.href.match(/\/channel\/(UC[\w-]+)/);
-        if (match) {
-          log('Found channel ID from owner link:', match[1]);
-          return match[1];
-        }
-      }
-    }
+    const match = location.pathname.match(/\/channel\/(UC[\w-]+)/);
+    if (match) return match[1];
 
     try {
       const scripts = document.querySelectorAll('script');
       for (const script of scripts) {
-        const text = script.textContent || '';
-        const patterns = [
-          /"channelId"\s*:\s*"(UC[\w-]+)"/,
-          /"externalChannelId"\s*:\s*"(UC[\w-]+)"/,
-          /"browseId"\s*:\s*"(UC[\w-]+)"/,
-          /channel\/(UC[\w-]+)/
-        ];
-        for (const pattern of patterns) {
-          const match = text.match(pattern);
-          if (match) {
-            log('Found channel ID from script:', match[1]);
-            return match[1];
-          }
+        if (script.textContent && script.textContent.includes('ytInitialData')) {
+          const match = script.textContent.match(/"channelId":"(UC[\w-]+)"/);
+          if (match) return match[1];
+          const match2 = script.textContent.match(/"externalId":"(UC[\w-]+)"/);
+          if (match2) return match2[1];
         }
       }
-    } catch (e) {
-      log('Error parsing scripts:', e);
-    }
-
-    const pathname = window.location.pathname;
-    const channelMatch = pathname.match(/^\/channel\/(UC[\w-]+)/);
-    if (channelMatch) {
-      log('Found channel ID from URL:', channelMatch[1]);
-      return channelMatch[1];
-    }
-
-    log('Could not detect channel ID');
-    return null;
-  }
-
-  function getChannelNameFromPage() {
-    try {
-      const ytData = unsafeWindow.ytInitialData;
-      if (ytData) {
-        if (ytData.contents?.twoColumnWatchNextResults?.results?.results?.contents) {
-          const contents = ytData.contents.twoColumnWatchNextResults.results.results.contents;
-          for (const content of contents) {
-            if (content.videoSecondaryInfoRenderer?.owner?.videoOwnerRenderer?.title?.runs?.[0]?.text) {
-              return content.videoSecondaryInfoRenderer.owner.videoOwnerRenderer.title.runs[0].text;
-            }
-          }
-        }
-        if (ytData.metadata?.channelMetadataRenderer?.title) {
-          return ytData.metadata.channelMetadataRenderer.title;
-        }
-      }
-    } catch (e) {
-      log('ytInitialData name method failed:', e);
-    }
-
-    const channelNameSelectors = [
-      '#channel-name yt-formatted-string',
-      '#channel-header ytd-channel-name yt-formatted-string',
-      'ytd-channel-name yt-formatted-string#text',
-      '#channel-header-container #channel-name'
-    ];
-
-    for (const selector of channelNameSelectors) {
-      const el = document.querySelector(selector);
-      if (el && el.textContent.trim()) {
-        return el.textContent.trim();
-      }
-    }
-
-    const ownerNameSelectors = [
-      '#owner #channel-name a',
-      '#owner #channel-name yt-formatted-string',
-      'ytd-video-owner-renderer #channel-name a',
-      'ytd-video-owner-renderer #channel-name yt-formatted-string',
-      '#upload-info #channel-name a',
-      '.ytd-video-owner-renderer #text'
-    ];
-
-    for (const selector of ownerNameSelectors) {
-      const el = document.querySelector(selector);
-      if (el && el.textContent.trim()) {
-        return el.textContent.trim();
-      }
-    }
+    } catch (e) {}
 
     return null;
   }
 
-  // ============================================
-  // Settings Modal
-  // ============================================
+  function createPopup() {
+    if (popup) { popup.remove(); popup = null; return; }
 
-  function createSettingsModal() {
-    const overlay = document.createElement('div');
-    overlay.className = 'bentube-modal-overlay';
-    overlay.innerHTML = `
-      <div class="bentube-modal">
-        <div class="bentube-modal-header">
-          <span class="bentube-modal-title">BenTube Settings</span>
-          <button class="bentube-popover-close bentube-modal-close">&times;</button>
-        </div>
-        <div class="bentube-modal-body">
-          <div class="bentube-connection-status">
-            <div class="bentube-status-dot" id="bentube-modal-status-dot"></div>
-            <span class="bentube-status-text" id="bentube-modal-status-text">Not configured</span>
-          </div>
-          <div class="bentube-form-group">
-            <label>Server URL</label>
-            <input type="text" id="bentube-server-url" placeholder="https://ben-tube.com">
-          </div>
-          <div class="bentube-form-group">
-            <label>API Key (get from BenTube Settings > Extension)</label>
-            <input type="password" id="bentube-api-key" placeholder="bt_xxxxxxxxxxxxxxxx">
-          </div>
-        </div>
-        <div class="bentube-modal-footer">
-          <button class="bentube-btn bentube-btn-secondary" id="bentube-test-btn">Test</button>
-          <button class="bentube-btn bentube-btn-primary" id="bentube-save-btn">Save</button>
-        </div>
-      </div>
-    `;
+    popup = document.createElement('div');
+    popup.className = 'bentube-popup';
+    popup.innerHTML = '<div class="bentube-popup-header"><span>Add to BenTube</span><button class="bentube-close">&times;</button></div><div class="bentube-popup-content"><div class="bentube-status">Loading...</div></div>';
 
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        hideSettingsModal();
-      }
-    });
+    document.documentElement.appendChild(popup);
 
-    overlay.querySelector('.bentube-modal-close').addEventListener('click', hideSettingsModal);
+    // Position popup near the button
+    const popupHeight = 350;
+    const popupWidth = 300;
+    const margin = 8;
 
-    overlay.querySelector('#bentube-test-btn').addEventListener('click', async () => {
-      const serverUrl = overlay.querySelector('#bentube-server-url').value.trim();
-      const apiKey = overlay.querySelector('#bentube-api-key').value.trim();
+    let top, left;
 
-      saveSettings(serverUrl, apiKey);
-
-      const statusDot = overlay.querySelector('#bentube-modal-status-dot');
-      const statusText = overlay.querySelector('#bentube-modal-status-text');
-
-      statusDot.className = 'bentube-status-dot checking';
-      statusText.textContent = 'Testing...';
-
-      const response = await apiRequest('/api/extension/groups');
-
-      if (response.success) {
-        statusDot.className = 'bentube-status-dot connected';
-        statusText.textContent = 'Connected!';
-      } else {
-        statusDot.className = 'bentube-status-dot disconnected';
-        statusText.textContent = response.error || 'Connection failed';
-      }
-    });
-
-    overlay.querySelector('#bentube-save-btn').addEventListener('click', () => {
-      const serverUrl = overlay.querySelector('#bentube-server-url').value.trim();
-      const apiKey = overlay.querySelector('#bentube-api-key').value.trim();
-
-      saveSettings(serverUrl, apiKey);
-      hideSettingsModal();
-    });
-
-    return overlay;
-  }
-
-  function showSettingsModal() {
-    if (!modalElement) {
-      modalElement = createSettingsModal();
-      document.body.appendChild(modalElement);
-    }
-
-    const settings = getSettings();
-    modalElement.querySelector('#bentube-server-url').value = settings.serverUrl;
-    modalElement.querySelector('#bentube-api-key').value = settings.apiKey;
-
-    const statusDot = modalElement.querySelector('#bentube-modal-status-dot');
-    const statusText = modalElement.querySelector('#bentube-modal-status-text');
-
-    if (settings.apiKey) {
-      statusDot.className = 'bentube-status-dot';
-      statusText.textContent = 'Click Test to verify';
+    // Position below button if room, otherwise above
+    if (fixedTop + 40 + popupHeight + margin < window.innerHeight) {
+      top = fixedTop + 40 + margin;
     } else {
-      statusDot.className = 'bentube-status-dot disconnected';
-      statusText.textContent = 'Not configured';
+      top = Math.max(margin, fixedTop - popupHeight - margin);
     }
 
-    modalElement.classList.add('visible');
-  }
+    left = Math.max(margin, Math.min(fixedLeft, window.innerWidth - popupWidth - margin));
 
-  function hideSettingsModal() {
-    if (modalElement) {
-      modalElement.classList.remove('visible');
-    }
-  }
+    popup.style.top = top + 'px';
+    popup.style.left = left + 'px';
 
-  // ============================================
-  // Button & Popover
-  // ============================================
+    popup.querySelector('.bentube-close').onclick = () => { popup.remove(); popup = null; };
 
-  function createBenTubeButton() {
-    const button = document.createElement('button');
-    button.id = 'bentube-add-button';
-    button.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 5v14M5 12h14"/>
-      </svg>
-      <span>BenTube</span>
-      <span id="bentube-settings-btn" title="Settings">
-        <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/></svg>
-      </span>
-    `;
-    button.title = 'Add to BenTube';
+    setTimeout(() => {
+      document.addEventListener('click', function closePopup(e) {
+        if (popup && !popup.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          popup.remove();
+          popup = null;
+          document.removeEventListener('click', closePopup);
+        }
+      });
+    }, 100);
 
-    // CRITICAL: Set position via inline styles (highest CSS priority)
-    // This cannot be overridden by YouTube's stylesheets or JavaScript
-    button.style.cssText = `
-      position: fixed !important;
-      bottom: 20px !important;
-      right: 20px !important;
-      top: auto !important;
-      left: auto !important;
-      z-index: 2147483647 !important;
-      transform: none !important;
-    `;
-
-    button.addEventListener('click', (e) => {
-      if (e.target.closest('#bentube-settings-btn')) {
-        e.preventDefault();
-        e.stopPropagation();
-        showSettingsModal();
-        return;
-      }
-
-      e.preventDefault();
-      e.stopPropagation();
-      handleButtonClick();
-    });
-
-    return button;
-  }
-
-  function createPopover() {
-    const popover = document.createElement('div');
-    popover.id = 'bentube-popover';
-    popover.className = 'bentube-popover';
-    popover.innerHTML = `
-      <div class="bentube-popover-header">
-        <span>Add to BenTube</span>
-        <button class="bentube-popover-close">&times;</button>
-      </div>
-      <div class="bentube-popover-content">
-        <div class="bentube-channel-info">
-          <span class="bentube-channel-name"></span>
-        </div>
-        <div class="bentube-groups-list">
-          <div class="bentube-loading">Loading groups...</div>
-        </div>
-      </div>
-      <div class="bentube-popover-footer">
-        <div class="bentube-status"></div>
-      </div>
-    `;
-
-    popover.querySelector('.bentube-popover-close').addEventListener('click', hidePopover);
-
-    document.addEventListener('click', (e) => {
-      if (popoverElement && !popoverElement.contains(e.target) &&
-          e.target.id !== 'bentube-add-button' && !e.target.closest('#bentube-add-button')) {
-        hidePopover();
-      }
-    });
-
-    return popover;
-  }
-
-  function showPopover() {
-    if (!popoverElement) {
-      popoverElement = createPopover();
-      document.documentElement.appendChild(popoverElement);
-    }
-
-    // Position popover above the fixed button (bottom-right corner)
-    popoverElement.style.position = 'fixed';
-    popoverElement.style.bottom = '70px';
-    popoverElement.style.right = '20px';
-    popoverElement.style.top = 'auto';
-    popoverElement.style.left = 'auto';
-
-    const channelNameEl = popoverElement.querySelector('.bentube-channel-name');
-    channelNameEl.textContent = currentChannelName || 'This channel';
-
-    popoverElement.classList.add('visible');
     loadGroups();
   }
 
-  function hidePopover() {
-    if (popoverElement) {
-      popoverElement.classList.remove('visible');
-    }
-  }
-
   async function loadGroups() {
-    const groupsList = popoverElement.querySelector('.bentube-groups-list');
-    groupsList.innerHTML = '<div class="bentube-loading">Loading groups...</div>';
-
-    const response = await apiRequest('/api/extension/groups');
-
-    if (!response.success) {
-      groupsList.innerHTML = `<div class="bentube-error">${escapeHtml(response.error || 'Failed to load groups')}</div>`;
+    const content = popup.querySelector('.bentube-popup-content');
+    const res = await apiRequest('/api/extension/groups');
+    if (!res.success) {
+      content.innerHTML = '<div class="bentube-status error">' + escapeHtml(res.error) + '</div>';
       return;
     }
-
-    if (!response.data || response.data.length === 0) {
-      groupsList.innerHTML = '<div class="bentube-empty">No groups found. Create one in BenTube first.</div>';
+    if (!res.data?.length) {
+      content.innerHTML = '<div class="bentube-status">No groups. Create one in BenTube first.</div>';
       return;
     }
-
-    groupsList.innerHTML = response.data.map(group => `
-      <button class="bentube-group-item" data-group-id="${escapeHtml(String(group.id))}">
-        <span class="bentube-group-icon" style="background-color: ${escapeHtml(group.color || '#3B82F6')}">${escapeHtml(group.icon || '📁')}</span>
-        <span class="bentube-group-name">${escapeHtml(group.name || 'Unnamed')}</span>
-        <span class="bentube-group-count">${escapeHtml(String(group.channelCount || 0))}</span>
-      </button>
-    `).join('');
-
-    groupsList.querySelectorAll('.bentube-group-item').forEach(item => {
-      item.addEventListener('click', () => handleGroupSelect(item.dataset.groupId));
+    content.innerHTML = res.data.map(g =>
+      '<button class="bentube-group" data-id="' + g.id + '">' +
+      '<span class="bentube-icon" style="background:' + (g.color || '#3B82F6') + '">' + renderIcon(g.icon) + '</span>' +
+      '<span class="bentube-name">' + escapeHtml(g.name) + '</span>' +
+      '<span class="bentube-count">' + (g.channelCount || 0) + '</span></button>'
+    ).join('');
+    content.querySelectorAll('.bentube-group').forEach(el => {
+      el.onclick = () => addToGroup(el.dataset.id);
     });
   }
 
-  async function handleGroupSelect(groupId) {
-    const statusEl = popoverElement.querySelector('.bentube-status');
-    statusEl.textContent = 'Adding channel...';
-    statusEl.className = 'bentube-status loading';
-
-    const response = await apiRequest('/api/extension/add-channel', {
+  async function addToGroup(groupId) {
+    const content = popup.querySelector('.bentube-popup-content');
+    content.innerHTML = '<div class="bentube-status">Adding...</div>';
+    const res = await apiRequest('/api/extension/add-channel', {
       method: 'POST',
-      body: JSON.stringify({
-        youtubeChannelId: currentChannelId,
-        groupId: groupId
-      })
+      body: JSON.stringify({ youtubeChannelId: channelId, groupId })
     });
-
-    if (response.success) {
-      statusEl.textContent = response.data?.alreadyInGroup
-        ? 'Channel already in group!'
-        : 'Channel added!';
-      statusEl.className = 'bentube-status success';
-      setTimeout(hidePopover, 1500);
+    if (res.success) {
+      content.innerHTML = '<div class="bentube-status success">' + (res.data?.alreadyInGroup ? 'Already in group!' : 'Added!') + '</div>';
+      setTimeout(() => { if (popup) { popup.remove(); popup = null; } }, 1500);
     } else {
-      statusEl.textContent = response.error || 'Failed to add channel';
-      statusEl.className = 'bentube-status error';
+      content.innerHTML = '<div class="bentube-status error">' + escapeHtml(res.error) + '</div>';
     }
   }
 
-  function handleButtonClick() {
-    if (!currentChannelId) {
-      currentChannelId = getChannelIdFromPage();
-      if (!currentChannelId) {
-        alert('Could not detect channel. Try navigating to the channel page directly.');
-        return;
-      }
+  const BENTUBE_LOGO = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>';
+
+  function createButton() {
+    if (btn && document.documentElement.contains(btn)) return btn;
+
+    btn = document.createElement('button');
+    btn.id = 'bentube-btn';
+    btn.innerHTML = BENTUBE_LOGO;
+    btn.title = 'Add to BenTube';
+    btn.className = 'bentube-hidden';
+    btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); createPopup(); };
+
+    // Append to documentElement to avoid YouTube's transforms
+    document.documentElement.appendChild(btn);
+    console.log('[BenTube] Button created v3.9.0');
+    return btn;
+  }
+
+  // Find subscribe button and calculate fixed position ONCE
+  function calculateFixedPosition() {
+    const selectors = [
+      '#owner ytd-subscribe-button-renderer',
+      '#owner #subscribe-button',
+      'ytd-video-owner-renderer #subscribe-button',
+      '#channel-header ytd-subscribe-button-renderer',
+      '#inner-header-container #subscribe-button'
+    ];
+
+    let anchor = null;
+    for (const sel of selectors) {
+      anchor = document.querySelector(sel);
+      if (anchor && anchor.offsetParent !== null) break;
+      anchor = null;
     }
 
-    showPopover();
-  }
-
-  // ============================================
-  // Button Injection
-  // ============================================
-
-  function injectButton() {
-    if (buttonInjected) return;
-
-    // Check if button already exists
-    if (document.querySelector('#bentube-add-button')) {
-      buttonInjected = true;
-      return;
+    if (!anchor) {
+      return false;
     }
 
-    currentChannelId = getChannelIdFromPage();
-    currentChannelName = getChannelNameFromPage();
+    channelId = getChannelId();
+    if (!channelId) {
+      return false;
+    }
 
-    const button = createBenTubeButton();
-    // Append to documentElement (html) to avoid YouTube's body transforms
-    document.documentElement.appendChild(button);
-    buttonInjected = true;
+    const rect = anchor.getBoundingClientRect();
 
-    log('Button injected (fixed position)', { channelId: currentChannelId, channelName: currentChannelName });
+    // Calculate the position relative to viewport (this becomes the fixed position)
+    fixedTop = rect.top + rect.height / 2 - 20;
+    fixedLeft = rect.right + 12;
+
+    return true;
   }
 
-  function resetState() {
-    // Only reset channel info, DO NOT remove the button
-    // Removing and re-adding causes visual glitches
-    currentChannelId = null;
-    currentChannelName = null;
-    hidePopover();
+  function showButton() {
+    if (!btn) createButton();
+
+    if (fixedTop !== null && fixedLeft !== null) {
+      // Apply fixed position with inline styles (highest priority)
+      btn.style.cssText = `
+        position: fixed !important;
+        top: ${fixedTop}px !important;
+        left: ${fixedLeft}px !important;
+        z-index: 2147483647 !important;
+        transform: none !important;
+      `;
+      btn.classList.remove('bentube-hidden');
+    }
   }
 
-  // ============================================
-  // Navigation Observer
-  // ============================================
-
-  function setupNavigationObserver() {
-    let lastUrl = location.href;
-
-    new MutationObserver(() => {
-      const url = location.href;
-      if (url !== lastUrl) {
-        lastUrl = url;
-        // Just reset channel info, button stays in place
-        resetState();
-      }
-      // Only try to inject if button doesn't exist in DOM
-      if (!document.querySelector('#bentube-add-button')) {
-        buttonInjected = false;
-        tryInjectButton();
-      }
-    }).observe(document.body, { subtree: true, childList: true });
+  function hideButton() {
+    if (btn) {
+      btn.classList.add('bentube-hidden');
+    }
   }
 
-  function tryInjectButton() {
-    let attempts = 0;
-    const maxAttempts = 20;
-
-    const tryInject = () => {
-      injectButton();
-      if (!buttonInjected && attempts < maxAttempts) {
-        attempts++;
-        setTimeout(tryInject, 300);
-      }
-    };
-
-    tryInject();
+  function tryPositionButton() {
+    if (calculateFixedPosition()) {
+      showButton();
+      return true;
+    }
+    return false;
   }
 
-  // ============================================
-  // Initialize
-  // ============================================
-
-  // Enforce button position using setInterval (more efficient than rAF for this use case)
-  // Checks every 50ms - fast enough to catch any manipulation, light on resources
+  // Position enforcement - keeps button at calculated fixed position
   function startPositionEnforcement() {
-    let cachedButton = null;
-
-    function enforcePosition() {
-      // Use cached reference, re-query only if stale
-      if (!cachedButton || !cachedButton.isConnected) {
-        cachedButton = document.querySelector('#bentube-add-button');
-      }
-
-      if (cachedButton) {
-        // Fast string comparison instead of checking each property
-        // Normalize by checking key properties only
-        const style = cachedButton.style;
+    setInterval(() => {
+      if (btn && !btn.classList.contains('bentube-hidden') && fixedTop !== null && fixedLeft !== null) {
+        const style = btn.style;
+        // Only re-apply if something changed the position
         if (style.position !== 'fixed' ||
-            style.bottom !== '20px' ||
-            style.right !== '20px' ||
-            style.transform !== 'none') {
-          // Re-apply all position styles with !important via cssText
-          cachedButton.style.cssText = `
+            style.top !== fixedTop + 'px' ||
+            style.left !== fixedLeft + 'px') {
+          btn.style.cssText = `
             position: fixed !important;
-            bottom: 20px !important;
-            right: 20px !important;
-            top: auto !important;
-            left: auto !important;
+            top: ${fixedTop}px !important;
+            left: ${fixedLeft}px !important;
             z-index: 2147483647 !important;
             transform: none !important;
           `;
         }
       }
-    }
-
-    // Run every 50ms (20 checks/second) - good balance of responsiveness and efficiency
-    setInterval(enforcePosition, 50);
+    }, 50);
   }
 
+  GM_registerMenuCommand('Test BenTube Connection', async () => {
+    const res = await apiRequest('/api/extension/groups');
+    if (res.success) {
+      alert('SUCCESS! Found ' + res.data.length + ' groups:\n' + res.data.map(g => '- ' + g.name).join('\n'));
+    } else {
+      alert('FAILED: ' + res.error);
+    }
+  });
+
   function init() {
-    log('Userscript loaded');
+    console.log('[BenTube] Script initialized v3.9.0');
     injectStyles();
-    setupNavigationObserver();
-    tryInjectButton();
+    createButton();
 
-    // Start continuous position enforcement
-    startPositionEnforcement();
+    let lastUrl = location.href;
+    let positionAttempts = 0;
+    const maxAttempts = 20;
 
-    if (typeof GM_registerMenuCommand !== 'undefined') {
-      GM_registerMenuCommand('BenTube Settings', showSettingsModal);
+    // Try to position button with retries (YouTube loads progressively)
+    function attemptPosition() {
+      if (tryPositionButton()) {
+        console.log('[BenTube] Button positioned at', fixedTop, fixedLeft);
+        positionAttempts = 0;
+      } else if (positionAttempts < maxAttempts) {
+        positionAttempts++;
+        setTimeout(attemptPosition, 300);
+      }
     }
 
-    setTimeout(() => {
-      const settings = getSettings();
-      log('Checking settings - API key exists:', !!settings.apiKey);
+    // Watch for URL changes (SPA navigation)
+    const observer = new MutationObserver(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        console.log('[BenTube] URL changed');
 
-      if (!settings.apiKey && !settingsShownThisSession) {
-        const lsApiKey = localStorage.getItem(STORAGE_KEY_PREFIX + 'apiKey');
-        if (!lsApiKey) {
-          settingsShownThisSession = true;
-          showSettingsModal();
-        }
+        // Reset state
+        if (popup) { popup.remove(); popup = null; }
+        channelId = null;
+        fixedTop = null;
+        fixedLeft = null;
+        hideButton();
+
+        // Re-calculate position for new page
+        positionAttempts = 0;
+        setTimeout(attemptPosition, 500);
       }
-    }, 3000);
+    });
+    observer.observe(document.body, { subtree: true, childList: true });
+
+    // Start position enforcement
+    startPositionEnforcement();
+
+    // Initial position attempt
+    attemptPosition();
   }
 
   if (document.readyState === 'loading') {
