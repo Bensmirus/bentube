@@ -16,6 +16,9 @@ export const metadata: Metadata = {
     icon: "/favicon.ico?v=3",
     apple: "/apple-touch-icon.png?v=3",
   },
+  verification: {
+    google: "tq-fOE2ol6MIdyHTWx2Dgtcr_3M4XsdYsdPGsPxPyuk",
+  },
 };
 
 export const viewport: Viewport = {
