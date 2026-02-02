@@ -522,12 +522,11 @@
       return cachedChannelId;
     }
 
-    // Method 3: Page data (limit search to first 10 scripts for performance)
+    // Method 3: Page data
     try {
       const scripts = document.querySelectorAll('script');
-      const limit = Math.min(scripts.length, 10);
-      for (let i = 0; i < limit; i++) {
-        const text = scripts[i].textContent || '';
+      for (const script of scripts) {
+        const text = script.textContent || '';
         if (text.includes('ytInitialData')) {
           const match = text.match(/"(?:channelId|externalId)":"(UC[\w-]+)"/);
           if (match) {
@@ -902,9 +901,13 @@
       const videoId = getVideoId();
 
       if (position && channelId) {
+        console.log('[BenTube] Button shown at', position, 'channel:', channelId);
         this.ui.show(position, channelId, videoId);
         this.positionLocked = true; // Lock position - never update until navigation
       } else if (attempts < CONFIG.retryAttempts) {
+        if (attempts === CONFIG.retryAttempts - 1) {
+          console.warn('[BenTube] Max retries reached. Position:', position, 'ChannelId:', channelId);
+        }
         setTimeout(() => this.tryPosition(attempts + 1), CONFIG.retryDelay);
       }
     }
