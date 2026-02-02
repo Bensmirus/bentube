@@ -1140,46 +1140,41 @@
   // Initialize
   // ============================================
 
-  // Continuously enforce button position using requestAnimationFrame
-  // YouTube uses custom scroll containers, so window.scroll doesn't work
-  // This runs every frame (~60fps) to ensure position is always correct
+  // Enforce button position using setInterval (more efficient than rAF for this use case)
+  // Checks every 50ms - fast enough to catch any manipulation, light on resources
   function startPositionEnforcement() {
-    const expectedStyles = {
-      position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      top: 'auto',
-      left: 'auto',
-      zIndex: '2147483647',
-      transform: 'none'
-    };
+    let cachedButton = null;
 
     function enforcePosition() {
-      const button = document.querySelector('#bentube-add-button');
-      if (button) {
-        // Check if any position-related style has been changed
-        const style = button.style;
-        if (style.position !== expectedStyles.position ||
-            style.bottom !== expectedStyles.bottom ||
-            style.right !== expectedStyles.right ||
-            style.top !== expectedStyles.top ||
-            style.left !== expectedStyles.left ||
-            style.zIndex !== expectedStyles.zIndex ||
-            style.transform !== expectedStyles.transform) {
-          // Re-apply styles
-          button.style.position = 'fixed';
-          button.style.bottom = '20px';
-          button.style.right = '20px';
-          button.style.top = 'auto';
-          button.style.left = 'auto';
-          button.style.zIndex = '2147483647';
-          button.style.transform = 'none';
+      // Use cached reference, re-query only if stale
+      if (!cachedButton || !cachedButton.isConnected) {
+        cachedButton = document.querySelector('#bentube-add-button');
+      }
+
+      if (cachedButton) {
+        // Fast string comparison instead of checking each property
+        // Normalize by checking key properties only
+        const style = cachedButton.style;
+        if (style.position !== 'fixed' ||
+            style.bottom !== '20px' ||
+            style.right !== '20px' ||
+            style.transform !== 'none') {
+          // Re-apply all position styles with !important via cssText
+          cachedButton.style.cssText = `
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            top: auto !important;
+            left: auto !important;
+            z-index: 2147483647 !important;
+            transform: none !important;
+          `;
         }
       }
-      requestAnimationFrame(enforcePosition);
     }
 
-    requestAnimationFrame(enforcePosition);
+    // Run every 50ms (20 checks/second) - good balance of responsiveness and efficiency
+    setInterval(enforcePosition, 50);
   }
 
   function init() {
