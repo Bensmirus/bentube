@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      3.9.0
+// @version      3.10.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -167,6 +167,7 @@
   let channelId = null;
   let popup = null;
   let btn = null;
+  let btnHost = null; // Shadow DOM host
   let fixedTop = null;
   let fixedLeft = null;
 
@@ -275,18 +276,63 @@
   const BENTUBE_LOGO = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 22h20L12 2z"/></svg>';
 
   function createButton() {
-    if (btn && document.documentElement.contains(btn)) return btn;
+    if (btnHost && document.documentElement.contains(btnHost)) return btn;
 
+    // Create Shadow DOM host - this isolates our button from YouTube's CSS completely
+    btnHost = document.createElement('div');
+    btnHost.id = 'bentube-host';
+    btnHost.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; overflow: visible !important; z-index: 2147483647 !important; pointer-events: none !important;';
+
+    // Create shadow root - 'closed' means YouTube can't access it
+    const shadow = btnHost.attachShadow({ mode: 'closed' });
+
+    // Inject styles directly into shadow DOM (completely isolated)
+    const style = document.createElement('style');
+    style.textContent = `
+      :host {
+        all: initial !important;
+      }
+      #bentube-btn {
+        position: fixed !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 40px !important;
+        height: 40px !important;
+        background: linear-gradient(135deg, #B8860B, #8B6914) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 50% !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        pointer-events: auto !important;
+        z-index: 2147483647 !important;
+      }
+      #bentube-btn:hover {
+        background: linear-gradient(135deg, #DAA520, #B8860B) !important;
+      }
+      #bentube-btn svg {
+        width: 20px !important;
+        height: 20px !important;
+      }
+      #bentube-btn.hidden {
+        display: none !important;
+      }
+    `;
+    shadow.appendChild(style);
+
+    // Create the actual button inside shadow DOM
     btn = document.createElement('button');
     btn.id = 'bentube-btn';
     btn.innerHTML = BENTUBE_LOGO;
     btn.title = 'Add to BenTube';
-    btn.className = 'bentube-hidden';
+    btn.className = 'hidden';
     btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); createPopup(); };
+    shadow.appendChild(btn);
 
-    // Append to documentElement to avoid YouTube's transforms
-    document.documentElement.appendChild(btn);
-    console.log('[BenTube] Button created v3.9.0');
+    // Append host to documentElement
+    document.documentElement.appendChild(btnHost);
+    console.log('[BenTube] Button created with Shadow DOM v3.10.0');
     return btn;
   }
 
@@ -329,21 +375,16 @@
     if (!btn) createButton();
 
     if (fixedTop !== null && fixedLeft !== null) {
-      // Apply fixed position with inline styles (highest priority)
-      btn.style.cssText = `
-        position: fixed !important;
-        top: ${fixedTop}px !important;
-        left: ${fixedLeft}px !important;
-        z-index: 2147483647 !important;
-        transform: none !important;
-      `;
-      btn.classList.remove('bentube-hidden');
+      // Set position directly - Shadow DOM isolates from YouTube's CSS
+      btn.style.top = fixedTop + 'px';
+      btn.style.left = fixedLeft + 'px';
+      btn.classList.remove('hidden');
     }
   }
 
   function hideButton() {
     if (btn) {
-      btn.classList.add('bentube-hidden');
+      btn.classList.add('hidden');
     }
   }
 
@@ -353,27 +394,6 @@
       return true;
     }
     return false;
-  }
-
-  // Position enforcement - keeps button at calculated fixed position
-  function startPositionEnforcement() {
-    setInterval(() => {
-      if (btn && !btn.classList.contains('bentube-hidden') && fixedTop !== null && fixedLeft !== null) {
-        const style = btn.style;
-        // Only re-apply if something changed the position
-        if (style.position !== 'fixed' ||
-            style.top !== fixedTop + 'px' ||
-            style.left !== fixedLeft + 'px') {
-          btn.style.cssText = `
-            position: fixed !important;
-            top: ${fixedTop}px !important;
-            left: ${fixedLeft}px !important;
-            z-index: 2147483647 !important;
-            transform: none !important;
-          `;
-        }
-      }
-    }, 50);
   }
 
   GM_registerMenuCommand('Test BenTube Connection', async () => {
@@ -386,7 +406,7 @@
   });
 
   function init() {
-    console.log('[BenTube] Script initialized v3.9.0');
+    console.log('[BenTube] Script initialized v3.10.0 (Shadow DOM)');
     injectStyles();
     createButton();
 
@@ -425,9 +445,7 @@
     });
     observer.observe(document.body, { subtree: true, childList: true });
 
-    // Start position enforcement
-    startPositionEnforcement();
-
+    // No position enforcement needed - Shadow DOM isolates from YouTube's CSS
     // Initial position attempt
     attemptPosition();
   }
