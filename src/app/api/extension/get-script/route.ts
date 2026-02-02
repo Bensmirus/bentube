@@ -533,6 +533,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
     // Method 1: Meta tag (most reliable)
     const meta = document.querySelector('meta[itemprop="channelId"]');
     if (meta?.content) {
+      console.log('[BenTube] Channel ID from meta tag:', meta.content);
       cachedChannelId = meta.content;
       cachedChannelUrl = location.href;
       return cachedChannelId;
@@ -541,12 +542,13 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
     // Method 2: URL pattern
     const urlMatch = location.pathname.match(/\\/channel\\/(UC[\\w-]+)/);
     if (urlMatch) {
+      console.log('[BenTube] Channel ID from URL:', urlMatch[1]);
       cachedChannelId = urlMatch[1];
       cachedChannelUrl = location.href;
       return cachedChannelId;
     }
 
-    // Method 3: Page data
+    // Method 3: Page data (ytInitialData)
     try {
       const scripts = document.querySelectorAll('script');
       for (const script of scripts) {
@@ -554,6 +556,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
         if (text.includes('ytInitialData')) {
           const match = text.match(/"(?:channelId|externalId)":"(UC[\\w-]+)"/);
           if (match) {
+            console.log('[BenTube] Channel ID from ytInitialData:', match[1]);
             cachedChannelId = match[1];
             cachedChannelUrl = location.href;
             return cachedChannelId;
@@ -564,6 +567,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       console.warn('[BenTube] Error parsing page data:', e);
     }
 
+    console.log('[BenTube] Channel ID not found');
     return null;
   }
 
@@ -583,14 +587,21 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 
     for (const selector of selectors) {
       const element = document.querySelector(selector);
-      if (element?.offsetParent) {
+      if (element) {
+        if (!element.offsetParent) {
+          console.log('[BenTube] Found', selector, 'but not visible (no offsetParent)');
+          continue;
+        }
         const rect = element.getBoundingClientRect();
         const top = rect.top + rect.height / 2 - 20;
         const left = rect.right + 12;
 
         // Only return position if it's visible in the viewport
         if (top >= 0 && top < window.innerHeight && left >= 0 && left < window.innerWidth) {
+          console.log('[BenTube] Using selector:', selector);
           return { top, left };
+        } else {
+          console.log('[BenTube] Found', selector, 'but outside viewport. top:', top, 'left:', left);
         }
       }
     }
@@ -920,6 +931,9 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       // Don't recalculate if position is already locked
       if (this.positionLocked) return;
 
+      // Log on first attempt and every 5th attempt
+      const shouldLog = attempts === 0 || attempts % 5 === 0;
+
       const position = getSubscribeButtonPosition();
       const channelId = getChannelId();
       const videoId = getVideoId();
@@ -929,10 +943,12 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
         this.ui.show(position, channelId, videoId);
         this.positionLocked = true; // Lock position - never update until navigation
       } else if (attempts < CONFIG.retryAttempts) {
-        if (attempts === CONFIG.retryAttempts - 1) {
-          console.warn('[BenTube] Max retries reached. Position:', position, 'ChannelId:', channelId);
+        if (shouldLog) {
+          console.log('[BenTube] Attempt', attempts + 1, '/', CONFIG.retryAttempts, '- Position:', !!position, 'ChannelId:', !!channelId);
         }
         setTimeout(() => this.tryPosition(attempts + 1), CONFIG.retryDelay);
+      } else {
+        console.warn('[BenTube] Gave up after', CONFIG.retryAttempts, 'attempts. Position:', position, 'ChannelId:', channelId);
       }
     }
   }
