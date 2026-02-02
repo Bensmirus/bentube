@@ -54,12 +54,32 @@ export default function LoginContent() {
     <div className="flex min-h-screen flex-col items-center justify-center p-8 bg-background relative">
       {/* Grain texture overlay - matches landing page */}
       <div className="fixed inset-0 pointer-events-none grain-static opacity-[0.45] mix-blend-overlay z-50" />
-      <div className="w-full max-w-sm space-y-8">
+      <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome to BenTube</h1>
-          <p className="mt-2 text-muted-foreground">
-            Sign in to manage your YouTube subscriptions
+          <h1 className="text-4xl font-bold">Ben.Tube</h1>
+          <p className="mt-2 text-lg text-muted-foreground">
+            A cleaner way to organize your YouTube subscriptions
           </p>
+        </div>
+
+        {/* Features */}
+        <div className="space-y-3 text-sm">
+          <div className="flex items-start gap-3">
+            <span className="text-accent">✓</span>
+            <span className="text-muted-foreground">Organize channels into topic-based groups</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-accent">✓</span>
+            <span className="text-muted-foreground">Track watch progress across all your devices</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-accent">✓</span>
+            <span className="text-muted-foreground">Add personal notes and tags to videos</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-accent">✓</span>
+            <span className="text-muted-foreground">No ads, no tracking, completely private</span>
+          </div>
         </div>
 
         <Suspense fallback={
@@ -69,7 +89,10 @@ export default function LoginContent() {
         </Suspense>
 
         <p className="text-center text-xs text-muted-foreground">
-          By signing in, you agree to allow BenTube to access your YouTube subscriptions.
+          By signing in, you agree to our{' '}
+          <a href="/terms" className="text-accent hover:underline">Terms of Service</a>
+          {' '}and{' '}
+          <a href="/privacy" className="text-accent hover:underline">Privacy Policy</a>.
           We only read your subscription list - we never post or modify anything.
         </p>
       </div>
