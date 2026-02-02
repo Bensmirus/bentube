@@ -1140,21 +1140,46 @@
   // Initialize
   // ============================================
 
-  // Safeguard: Re-enforce button position on scroll
-  // YouTube may try to manipulate styles during scroll
-  function enforceButtonPosition() {
-    const button = document.querySelector('#bentube-add-button');
-    if (button) {
-      button.style.cssText = `
-        position: fixed !important;
-        bottom: 20px !important;
-        right: 20px !important;
-        top: auto !important;
-        left: auto !important;
-        z-index: 2147483647 !important;
-        transform: none !important;
-      `;
+  // Continuously enforce button position using requestAnimationFrame
+  // YouTube uses custom scroll containers, so window.scroll doesn't work
+  // This runs every frame (~60fps) to ensure position is always correct
+  function startPositionEnforcement() {
+    const expectedStyles = {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      top: 'auto',
+      left: 'auto',
+      zIndex: '2147483647',
+      transform: 'none'
+    };
+
+    function enforcePosition() {
+      const button = document.querySelector('#bentube-add-button');
+      if (button) {
+        // Check if any position-related style has been changed
+        const style = button.style;
+        if (style.position !== expectedStyles.position ||
+            style.bottom !== expectedStyles.bottom ||
+            style.right !== expectedStyles.right ||
+            style.top !== expectedStyles.top ||
+            style.left !== expectedStyles.left ||
+            style.zIndex !== expectedStyles.zIndex ||
+            style.transform !== expectedStyles.transform) {
+          // Re-apply styles
+          button.style.position = 'fixed';
+          button.style.bottom = '20px';
+          button.style.right = '20px';
+          button.style.top = 'auto';
+          button.style.left = 'auto';
+          button.style.zIndex = '2147483647';
+          button.style.transform = 'none';
+        }
+      }
+      requestAnimationFrame(enforcePosition);
     }
+
+    requestAnimationFrame(enforcePosition);
   }
 
   function init() {
@@ -1163,16 +1188,8 @@
     setupNavigationObserver();
     tryInjectButton();
 
-    // Re-enforce position on scroll (throttled)
-    let scrollTimeout;
-    window.addEventListener('scroll', () => {
-      if (!scrollTimeout) {
-        scrollTimeout = setTimeout(() => {
-          enforceButtonPosition();
-          scrollTimeout = null;
-        }, 100);
-      }
-    }, { passive: true });
+    // Start continuous position enforcement
+    startPositionEnforcement();
 
     if (typeof GM_registerMenuCommand !== 'undefined') {
       GM_registerMenuCommand('BenTube Settings', showSettingsModal);
