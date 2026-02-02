@@ -61,6 +61,8 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       transition: background 0.2s;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      pointer-events: auto;
+      z-index: 2147483647;
     }
 
     .bentube-button:hover {
@@ -85,6 +87,8 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.2);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       overflow: hidden;
+      pointer-events: auto;
+      z-index: 2147483647;
     }
 
     .bentube-popup.hidden {
@@ -603,9 +607,11 @@
     }
 
     init() {
-      // Create Shadow DOM host
+      // Create Shadow DOM host with fixed positioning at root level
       this.host = document.createElement('div');
       this.host.id = 'bentube-shadow-host';
+      // Position host fixed to viewport to avoid any transform issues from YouTube's CSS
+      this.host.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; transform: none !important;';
 
       // Create closed shadow root (completely isolated)
       this.shadow = this.host.attachShadow({ mode: 'closed' });
