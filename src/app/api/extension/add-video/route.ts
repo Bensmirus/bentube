@@ -137,11 +137,13 @@ export async function POST(request: NextRequest) {
     // Get or create channel
     let internalChannelId: string
 
-    const { data: existingChannel } = await admin
+    const { data: existingChannelData } = await admin
       .from('channels')
       .select('id')
       .eq('youtube_id', channelId)
       .single()
+
+    const existingChannel = existingChannelData as { id: string } | null
 
     if (existingChannel) {
       internalChannelId = existingChannel.id
