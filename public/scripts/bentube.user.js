@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      4.2.0
+// @version      4.2.1
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -515,10 +515,13 @@
       const element = document.querySelector(selector);
       if (element?.offsetParent) {
         const rect = element.getBoundingClientRect();
-        return {
-          top: rect.top + rect.height / 2 - 20,
-          left: rect.right + 12
-        };
+        const top = rect.top + rect.height / 2 - 20;
+        const left = rect.right + 12;
+
+        // Only return position if it's visible in the viewport
+        if (top >= 0 && top < window.innerHeight && left >= 0 && left < window.innerWidth) {
+          return { top, left };
+        }
       }
     }
 
@@ -827,7 +830,7 @@
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v4.2.0');
+      console.log('[BenTube] Initialized v4.2.1');
     }
 
     onNavigate() {
