@@ -4,11 +4,11 @@ import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
 export const dynamic = 'force-dynamic'
 
-// v4.1.0 script template - uses GM_getValue/GM_setValue for API key storage
+// v4.2.0 script template - uses GM_getValue/GM_setValue for API key storage
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      4.1.0
+// @version      4.2.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -830,6 +830,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       this.ui = new BenTubeUI();
       this.lastUrl = '';
       this.observer = null;
+      this.positionLocked = false; // Once position is set, don't change it
     }
 
     init() {
@@ -848,21 +849,26 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v4.1.0');
+      console.log('[BenTube] Initialized v4.2.0');
     }
 
     onNavigate() {
+      this.positionLocked = false; // Allow repositioning on new page
       this.ui.hide();
       setTimeout(() => this.tryPosition(), 500);
     }
 
     tryPosition(attempts = 0) {
+      // Don't recalculate if position is already locked
+      if (this.positionLocked) return;
+
       const position = getSubscribeButtonPosition();
       const channelId = getChannelId();
       const videoId = getVideoId();
 
       if (position && channelId) {
         this.ui.show(position, channelId, videoId);
+        this.positionLocked = true; // Lock position - never update until navigation
       } else if (attempts < CONFIG.retryAttempts) {
         setTimeout(() => this.tryPosition(attempts + 1), CONFIG.retryDelay);
       }
