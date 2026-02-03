@@ -4,11 +4,11 @@ import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
 export const dynamic = 'force-dynamic'
 
-// v5.0.0 script template - uses GM_getValue/GM_setValue for API key storage
+// v5.1.0 script template - button follows subscribe button on scroll
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      5.0.0
+// @version      5.1.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -898,8 +898,11 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       this.ui = new BenTubeUI();
       this.lastUrl = '';
       this.observer = null;
-      this.positionLocked = false; // Once position is set, don't change it
-      this.urlCheckTimeout = null; // For debouncing URL checks
+      this.urlCheckTimeout = null;
+      this.channelFound = false; // Track if we've found channel info
+      this.currentChannelId = null;
+      this.currentVideoId = null;
+      this.scrollHandler = null;
     }
 
     init() {
@@ -908,7 +911,6 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 
       // Watch for SPA navigation with debounced URL checking
       this.observer = new MutationObserver(() => {
-        // Debounce URL checks to avoid excessive processing
         if (this.urlCheckTimeout) return;
         this.urlCheckTimeout = setTimeout(() => {
           this.urlCheckTimeout = null;
@@ -920,24 +922,44 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       });
       this.observer.observe(document.body, { subtree: true, childList: true });
 
+      // Add scroll listener - button follows subscribe button as you scroll
+      this.scrollHandler = () => this.updateButtonPosition();
+      window.addEventListener('scroll', this.scrollHandler, { passive: true });
+
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v5.0.0');
+      console.log('[BenTube] Initialized v5.1.0');
     }
 
     onNavigate() {
-      this.positionLocked = false; // Allow repositioning on new page
-      clearChannelCache(); // Clear cached channel ID for new page
+      this.channelFound = false;
+      this.currentChannelId = null;
+      this.currentVideoId = null;
+      clearChannelCache();
       this.ui.hide();
       setTimeout(() => this.tryPosition(), CONFIG.navigationDelay);
     }
 
-    tryPosition(attempts = 0) {
-      // Don't recalculate if position is already locked
-      if (this.positionLocked) return;
+    // Called on scroll - update position without retries
+    updateButtonPosition() {
+      if (!this.channelFound) return; // Still waiting for initial setup
 
-      // Log on first attempt and every 5th attempt
+      const position = getSubscribeButtonPosition();
+
+      if (position) {
+        // Subscribe button visible - show button at new position
+        this.ui.show(position, this.currentChannelId, this.currentVideoId);
+      } else {
+        // Subscribe button scrolled out of view - hide button
+        this.ui.hide();
+      }
+    }
+
+    // Initial setup with retry logic
+    tryPosition(attempts = 0) {
+      if (this.channelFound) return;
+
       const shouldLog = attempts === 0 || attempts % 5 === 0;
 
       const position = getSubscribeButtonPosition();
@@ -946,8 +968,10 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 
       if (position && channelId) {
         console.log('[BenTube] Button shown at', position, 'channel:', channelId);
+        this.channelFound = true;
+        this.currentChannelId = channelId;
+        this.currentVideoId = videoId;
         this.ui.show(position, channelId, videoId);
-        this.positionLocked = true; // Lock position - never update until navigation
       } else if (attempts < CONFIG.retryAttempts) {
         if (shouldLog) {
           console.log('[BenTube] Attempt', attempts + 1, '/', CONFIG.retryAttempts, '- Position:', !!position, 'ChannelId:', !!channelId);
