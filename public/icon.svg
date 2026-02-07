@@ -12,7 +12,7 @@
   </defs>
   <rect width="512" height="512" fill="url(#bgGradient)" rx="92"/>
   <polygon
-    points="256,154 141,410 371,410"
+    points="256,128 141,384 371,384"
     fill="url(#darkGoldGradient)"
   />
 </svg>
