@@ -4,11 +4,11 @@ import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
 export const dynamic = 'force-dynamic'
 
-// v5.1.0 script template - button follows subscribe button on scroll
+// v5.2.0 script template - hide button in fullscreen mode
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      5.1.0
+// @version      5.2.0
 // @description  Add YouTube channels to your BenTube groups directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -903,6 +903,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       this.currentChannelId = null;
       this.currentVideoId = null;
       this.scrollHandler = null;
+      this.isFullscreen = false;
     }
 
     init() {
@@ -926,10 +927,21 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       this.scrollHandler = () => this.updateButtonPosition();
       window.addEventListener('scroll', this.scrollHandler, { passive: true });
 
+      // Hide button when entering fullscreen
+      document.addEventListener('fullscreenchange', () => {
+        this.isFullscreen = !!document.fullscreenElement;
+        if (this.isFullscreen) {
+          this.ui.hide();
+        } else if (this.channelFound) {
+          // Restore button when exiting fullscreen
+          this.updateButtonPosition();
+        }
+      });
+
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v5.1.0');
+      console.log('[BenTube] Initialized v5.2.0');
     }
 
     onNavigate() {
@@ -943,7 +955,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 
     // Called on scroll - update position without retries
     updateButtonPosition() {
-      if (!this.channelFound) return; // Still waiting for initial setup
+      if (!this.channelFound || this.isFullscreen) return; // Skip if not ready or in fullscreen
 
       const position = getSubscribeButtonPosition();
 
