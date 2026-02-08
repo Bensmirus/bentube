@@ -704,13 +704,13 @@ export default function FeedContent() {
           {/* Mobile Group Selector Dropdown */}
           {showMobileGroupSelector && (
             <>
-              {/* Backdrop */}
+              {/* Backdrop - starts below header so it doesn't block the header button */}
               <div
-                className="fixed inset-0 z-[106] md:hidden"
+                className="fixed inset-0 top-[44px] sm:top-12 z-[150] md:hidden"
                 onClick={() => setShowMobileGroupSelector(false)}
               />
               {/* Dropdown */}
-              <div className="absolute left-0 right-0 top-12 z-[107] bg-[#ffffff] dark:bg-[#262017] border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
+              <div className="fixed left-0 right-0 top-[44px] sm:top-12 z-[151] bg-[#ffffff] dark:bg-[#262017] border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
                 {/* All Videos option */}
                 <button
                   onClick={() => {

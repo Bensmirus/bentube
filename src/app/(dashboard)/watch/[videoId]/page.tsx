@@ -254,19 +254,18 @@ export default function WatchPage() {
 
         // Fetch groups this channel belongs to
         const { data: channelGroups } = await supabase
-          .from('channel_groups')
-          .select('channel_group_id, channel_groups:channel_group_id(id, name, icon)')
+          .from('group_channels')
+          .select('group_id, channel_groups:group_id(id, name, icon, user_id)')
           .eq('channel_id', currentVideo.channel_id)
-          .eq('user_id', currentUserId)
 
         if (channelGroups) {
           const groups = channelGroups
-            .map((cg: { channel_groups: VideoGroup | VideoGroup[] | null }) => {
+            .map((cg: { channel_groups: (VideoGroup & { user_id?: string }) | (VideoGroup & { user_id?: string })[] | null }) => {
               const g = cg.channel_groups
               if (Array.isArray(g)) return g[0]
               return g
             })
-            .filter(Boolean) as VideoGroup[]
+            .filter((g): g is VideoGroup & { user_id: string } => g !== null && g !== undefined && g.user_id === currentUserId) as VideoGroup[]
           setVideoGroups(groups)
           // Always set to first group to ensure sync with select dropdown
           if (groups.length > 0) {
