@@ -276,6 +276,17 @@ export default function SubscribePage() {
         <p className="text-center text-xs text-muted-foreground">
           Secure payment via Lemon Squeezy. You can cancel anytime from your account settings.
         </p>
+
+        {/* Contact */}
+        <div className="text-center pt-2">
+          <p className="text-xs text-muted-foreground mb-1">Questions or feedback?</p>
+          <a
+            href="mailto:ben.ware.tools@gmail.com"
+            className="text-xs text-accent hover:underline"
+          >
+            ben.ware.tools@gmail.com
+          </a>
+        </div>
       </div>
     </div>
   )
