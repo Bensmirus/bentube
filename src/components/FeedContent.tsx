@@ -92,6 +92,8 @@ export default function FeedContent() {
     durationFilter: 'any',
     includedChannelIds: new Set(),
     excludedChannelIds: new Set(),
+    includedGroupIds: new Set(),
+    excludedGroupIds: new Set(),
   })
   const [groupChannels, setGroupChannels] = useState<{ id: string; title: string; thumbnail: string | null }[]>([])
 
@@ -155,6 +157,8 @@ export default function FeedContent() {
     maxDuration: filterParams.maxDuration,
     channelIds: filterParams.channelIds,
     excludeChannelIds: filterParams.excludeChannelIds,
+    includeGroupIds: filterParams.includeGroupIds,
+    excludeGroupIds: filterParams.excludeGroupIds,
     limit: 24, // Load 24 videos per batch (good for grid layouts)
   })
   const { data: inProgressCount } = useInProgressCount(selectedGroupId)
@@ -477,7 +481,9 @@ export default function FeedContent() {
   const hasActiveFilters = filters.dateFilter !== 'any' ||
     filters.durationFilter !== 'any' ||
     filters.includedChannelIds.size > 0 ||
-    filters.excludedChannelIds.size > 0
+    filters.excludedChannelIds.size > 0 ||
+    filters.includedGroupIds.size > 0 ||
+    filters.excludedGroupIds.size > 0
 
   // Fetch available tags when group is selected
   useEffect(() => {
@@ -546,11 +552,14 @@ export default function FeedContent() {
     fetchChannels()
   }, [selectedGroupId])
 
-  // Reset channel filter when group changes
+  // Reset channel and group filters when group changes
   useEffect(() => {
     setFilters(prev => ({
       ...prev,
-      selectedChannelIds: new Set(),
+      includedChannelIds: new Set(),
+      excludedChannelIds: new Set(),
+      includedGroupIds: new Set(),
+      excludedGroupIds: new Set(),
     }))
   }, [selectedGroupId])
 
@@ -644,6 +653,7 @@ export default function FeedContent() {
           <FilterPopover
             filters={filters}
             channels={groupChannels}
+            groups={!selectedGroupId ? groups.map(g => ({ id: g.id, name: g.name, icon: g.icon })) : undefined}
             onFilterChange={handleFilterChange}
             onClose={handleCloseFilterPopover}
             position={filterPosition}

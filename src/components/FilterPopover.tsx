@@ -10,6 +10,8 @@ export type FilterState = {
   durationFilter: DurationFilter
   includedChannelIds: Set<string>
   excludedChannelIds: Set<string>
+  includedGroupIds: Set<string>
+  excludedGroupIds: Set<string>
 }
 
 type Channel = {
@@ -18,9 +20,16 @@ type Channel = {
   thumbnail: string | null
 }
 
+type GroupItem = {
+  id: string
+  name: string
+  icon: string
+}
+
 type FilterPopoverProps = {
   filters: FilterState
   channels: Channel[]
+  groups?: GroupItem[]
   onFilterChange: (filters: FilterState) => void
   onClose: () => void
   position?: { top: number; left: number } | null
@@ -44,6 +53,7 @@ const DURATION_OPTIONS: { value: DurationFilter; label: string; description: str
 export default function FilterPopover({
   filters,
   channels,
+  groups,
   onFilterChange,
   onClose,
   position,
@@ -157,12 +167,66 @@ export default function FilterPopover({
     onFilterChange(newFilters)
   }
 
+  const handleIncludeGroup = (groupId: string) => {
+    const newIncluded = new Set(localFilters.includedGroupIds)
+    const newExcluded = new Set(localFilters.excludedGroupIds)
+
+    newExcluded.delete(groupId)
+
+    if (newIncluded.has(groupId)) {
+      newIncluded.delete(groupId)
+    } else {
+      newIncluded.add(groupId)
+    }
+
+    const newFilters = {
+      ...localFilters,
+      includedGroupIds: newIncluded,
+      excludedGroupIds: newExcluded,
+    }
+    setLocalFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
+  const handleExcludeGroup = (groupId: string) => {
+    const newIncluded = new Set(localFilters.includedGroupIds)
+    const newExcluded = new Set(localFilters.excludedGroupIds)
+
+    newIncluded.delete(groupId)
+
+    if (newExcluded.has(groupId)) {
+      newExcluded.delete(groupId)
+    } else {
+      newExcluded.add(groupId)
+    }
+
+    const newFilters = {
+      ...localFilters,
+      includedGroupIds: newIncluded,
+      excludedGroupIds: newExcluded,
+    }
+    setLocalFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
+  const handleClearGroupFilters = () => {
+    const newFilters = {
+      ...localFilters,
+      includedGroupIds: new Set<string>(),
+      excludedGroupIds: new Set<string>(),
+    }
+    setLocalFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
   const handleClearFilters = () => {
     const clearedFilters: FilterState = {
       dateFilter: 'any',
       durationFilter: 'any',
       includedChannelIds: new Set(),
       excludedChannelIds: new Set(),
+      includedGroupIds: new Set(),
+      excludedGroupIds: new Set(),
     }
     setLocalFilters(clearedFilters)
     onFilterChange(clearedFilters)
@@ -172,7 +236,9 @@ export default function FilterPopover({
     localFilters.dateFilter !== 'any' ||
     localFilters.durationFilter !== 'any' ||
     localFilters.includedChannelIds.size > 0 ||
-    localFilters.excludedChannelIds.size > 0
+    localFilters.excludedChannelIds.size > 0 ||
+    localFilters.includedGroupIds.size > 0 ||
+    localFilters.excludedGroupIds.size > 0
 
   // Calculate position for desktop
   const style: React.CSSProperties = !isMobile && position
@@ -349,6 +415,72 @@ export default function FilterPopover({
                 </div>
               </div>
             )}
+
+            {/* Group Filter (All view only) */}
+            {groups && groups.length > 0 && channels.length === 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Groups
+                  </p>
+                  {(localFilters.includedGroupIds.size > 0 || localFilters.excludedGroupIds.size > 0) && (
+                    <button
+                      onClick={handleClearGroupFilters}
+                      className="text-sm text-accent hover:text-accent/80"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {(localFilters.includedGroupIds.size > 0 || localFilters.excludedGroupIds.size > 0) && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {localFilters.includedGroupIds.size > 0 && `Showing ${localFilters.includedGroupIds.size}`}
+                    {localFilters.includedGroupIds.size > 0 && localFilters.excludedGroupIds.size > 0 && ', '}
+                    {localFilters.excludedGroupIds.size > 0 && `Hiding ${localFilters.excludedGroupIds.size}`}
+                  </p>
+                )}
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {groups.map((group) => {
+                    const isIncluded = localFilters.includedGroupIds.has(group.id)
+                    const isExcluded = localFilters.excludedGroupIds.has(group.id)
+
+                    return (
+                      <div
+                        key={group.id}
+                        className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted transition-all"
+                      >
+                        <button
+                          onClick={() => handleIncludeGroup(group.id)}
+                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${
+                            isIncluded
+                              ? 'bg-green-500 text-white'
+                              : 'bg-muted hover:bg-green-500/20 text-muted-foreground hover:text-green-600'
+                          }`}
+                          title="Show only this group"
+                        >
+                          <span className="text-lg font-bold leading-none">+</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleExcludeGroup(group.id)}
+                          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${
+                            isExcluded
+                              ? 'bg-red-500 text-white'
+                              : 'bg-muted hover:bg-red-500/20 text-muted-foreground hover:text-red-600'
+                          }`}
+                          title="Hide this group"
+                        >
+                          <span className="text-lg font-bold leading-none">−</span>
+                        </button>
+
+                        <span className="text-lg flex-shrink-0">{group.icon}</span>
+                        <span className="text-sm truncate flex-1">{group.name}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </>
@@ -498,6 +630,72 @@ export default function FilterPopover({
             </div>
           </div>
         )}
+
+        {/* Group Filter (All view only) */}
+        {groups && groups.length > 0 && channels.length === 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Groups
+              </p>
+              {(localFilters.includedGroupIds.size > 0 || localFilters.excludedGroupIds.size > 0) && (
+                <button
+                  onClick={handleClearGroupFilters}
+                  className="text-xs text-accent hover:text-accent/80"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {(localFilters.includedGroupIds.size > 0 || localFilters.excludedGroupIds.size > 0) && (
+              <p className="text-xs text-muted-foreground mb-2">
+                {localFilters.includedGroupIds.size > 0 && `Showing ${localFilters.includedGroupIds.size}`}
+                {localFilters.includedGroupIds.size > 0 && localFilters.excludedGroupIds.size > 0 && ', '}
+                {localFilters.excludedGroupIds.size > 0 && `Hiding ${localFilters.excludedGroupIds.size}`}
+              </p>
+            )}
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {groups.map((group) => {
+                const isIncluded = localFilters.includedGroupIds.has(group.id)
+                const isExcluded = localFilters.excludedGroupIds.has(group.id)
+
+                return (
+                  <div
+                    key={group.id}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted transition-all"
+                  >
+                    <button
+                      onClick={() => handleIncludeGroup(group.id)}
+                      className={`w-5 h-5 flex items-center justify-center rounded transition-all flex-shrink-0 ${
+                        isIncluded
+                          ? 'bg-green-500 text-white'
+                          : 'bg-muted hover:bg-green-500/20 text-muted-foreground hover:text-green-600'
+                      }`}
+                      title="Show only this group"
+                    >
+                      <span className="text-sm font-bold leading-none">+</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleExcludeGroup(group.id)}
+                      className={`w-5 h-5 flex items-center justify-center rounded transition-all flex-shrink-0 ${
+                        isExcluded
+                          ? 'bg-red-500 text-white'
+                          : 'bg-muted hover:bg-red-500/20 text-muted-foreground hover:text-red-600'
+                      }`}
+                      title="Hide this group"
+                    >
+                      <span className="text-sm font-bold leading-none">−</span>
+                    </button>
+
+                    <span className="text-sm flex-shrink-0">{group.icon}</span>
+                    <span className="text-sm truncate flex-1">{group.name}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -511,6 +709,8 @@ export function getFilterParams(filters: FilterState): {
   maxDuration?: number
   channelIds?: string[]
   excludeChannelIds?: string[]
+  includeGroupIds?: string[]
+  excludeGroupIds?: string[]
 } {
   const params: {
     minDate?: string
@@ -519,6 +719,8 @@ export function getFilterParams(filters: FilterState): {
     maxDuration?: number
     channelIds?: string[]
     excludeChannelIds?: string[]
+    includeGroupIds?: string[]
+    excludeGroupIds?: string[]
   } = {}
 
   // Date filter
@@ -569,6 +771,14 @@ export function getFilterParams(filters: FilterState): {
   }
   if (filters.excludedChannelIds.size > 0) {
     params.excludeChannelIds = Array.from(filters.excludedChannelIds)
+  }
+
+  // Group filters
+  if (filters.includedGroupIds.size > 0) {
+    params.includeGroupIds = Array.from(filters.includedGroupIds)
+  }
+  if (filters.excludedGroupIds.size > 0) {
+    params.excludeGroupIds = Array.from(filters.excludedGroupIds)
   }
 
   return params

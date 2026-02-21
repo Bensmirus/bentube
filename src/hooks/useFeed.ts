@@ -52,6 +52,8 @@ type FeedParams = {
   maxDuration?: number  // Optional - maximum duration in seconds
   channelIds?: string[]  // Optional - filter by specific channel IDs (include)
   excludeChannelIds?: string[]  // Optional - exclude specific channel IDs
+  includeGroupIds?: string[]  // Optional - filter by specific group IDs (include)
+  excludeGroupIds?: string[]  // Optional - exclude specific group IDs
   limit: number
   offset: number
 }
@@ -85,6 +87,13 @@ async function fetchFeed(params: FeedParams): Promise<FeedResponse> {
   }
   if (params.excludeChannelIds && params.excludeChannelIds.length > 0) {
     searchParams.set('exclude_channel_ids', params.excludeChannelIds.join(','))
+  }
+  // Group filter
+  if (params.includeGroupIds && params.includeGroupIds.length > 0) {
+    searchParams.set('include_group_ids', params.includeGroupIds.join(','))
+  }
+  if (params.excludeGroupIds && params.excludeGroupIds.length > 0) {
+    searchParams.set('exclude_group_ids', params.excludeGroupIds.join(','))
   }
   // Shorts filtering: only show shorts when explicitly requested
   // When viewing main feed (!showShortsOnly), exclude shorts

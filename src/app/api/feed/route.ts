@@ -30,6 +30,10 @@ export async function GET(request: NextRequest) {
     const channelIds = channelIdsParam ? channelIdsParam.split(',').filter(Boolean) : null
     const excludeChannelIdsParam = searchParams.get('exclude_channel_ids')
     const excludeChannelIds = excludeChannelIdsParam ? excludeChannelIdsParam.split(',').filter(Boolean) : null
+    const includeGroupIdsParam = searchParams.get('include_group_ids')
+    const includeGroupIds = includeGroupIdsParam ? includeGroupIdsParam.split(',').filter(Boolean) : null
+    const excludeGroupIdsParam = searchParams.get('exclude_group_ids')
+    const excludeGroupIds = excludeGroupIdsParam ? excludeGroupIdsParam.split(',').filter(Boolean) : null
     const inProgressOnly = searchParams.get('in_progress') === 'true'
     const watchLaterOnly = searchParams.get('watch_later') === 'true'
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -50,6 +54,8 @@ export async function GET(request: NextRequest) {
         p_max_date: maxDate,
         p_channel_ids: channelIds,
         p_exclude_channel_ids: excludeChannelIds,
+        p_include_group_ids: includeGroupIds,
+        p_exclude_group_ids: excludeGroupIds,
         p_in_progress_only: inProgressOnly,
         p_watch_later_only: watchLaterOnly,
         p_limit: limit,
