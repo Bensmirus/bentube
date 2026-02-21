@@ -69,6 +69,25 @@ export async function GET(request: NextRequest) {
         // Don't fail the auth flow, just log the error
       }
 
+      // Check if this user has admin-granted free access
+      try {
+        const { data: freeAccessRow } = await supabase
+          .from('free_access_emails')
+          .select('email')
+          .eq('email', email.toLowerCase())
+          .maybeSingle()
+
+        if (freeAccessRow) {
+          await supabase
+            .from('users')
+            .update({ is_free_tier: true } as never)
+            .eq('auth_user_id', authUser.id)
+        }
+      } catch (freeAccessError) {
+        console.error('Free access check error:', freeAccessError)
+        // Don't fail the auth flow
+      }
+
       // Check if this is a first-time user (no channels imported)
       // Get the internal user ID first
       const { data: userData } = await supabase

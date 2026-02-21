@@ -14,6 +14,13 @@ type InviteCode = {
   is_active: boolean
 }
 
+type FreeAccessEmail = {
+  id: string
+  email: string
+  label: string | null
+  created_at: string
+}
+
 export default function AdminSection() {
   const [codes, setCodes] = useState<InviteCode[]>([])
   const [loading, setLoading] = useState(true)
@@ -28,8 +35,17 @@ export default function AdminSection() {
   // Copy state
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
+  // Free access state
+  const [freeEmails, setFreeEmails] = useState<FreeAccessEmail[]>([])
+  const [freeEmailInput, setFreeEmailInput] = useState('')
+  const [freeEmailLabel, setFreeEmailLabel] = useState('')
+  const [addingFreeEmail, setAddingFreeEmail] = useState(false)
+  const [freeEmailError, setFreeEmailError] = useState<string | null>(null)
+  const [freeEmailSuccess, setFreeEmailSuccess] = useState<string | null>(null)
+
   useEffect(() => {
     fetchCodes()
+    fetchFreeEmails()
   }, [])
 
   async function fetchCodes() {
@@ -103,6 +119,70 @@ export default function AdminSection() {
     setTimeout(() => setCopiedCode(null), 2000)
   }
 
+  async function fetchFreeEmails() {
+    try {
+      const res = await fetch('/api/admin/free-access')
+      if (res.ok) {
+        const data = await res.json()
+        setFreeEmails(data.emails || [])
+      }
+    } catch {
+      // Silent fail - not critical
+    }
+  }
+
+  async function addFreeEmail() {
+    if (!freeEmailInput.trim() || !freeEmailInput.includes('@')) {
+      setFreeEmailError('Enter a valid email address')
+      return
+    }
+
+    setAddingFreeEmail(true)
+    setFreeEmailError(null)
+    setFreeEmailSuccess(null)
+
+    try {
+      const res = await fetch('/api/admin/free-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: freeEmailInput.trim(),
+          label: freeEmailLabel || undefined,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setFreeEmails([data.email, ...freeEmails])
+        setFreeEmailInput('')
+        setFreeEmailLabel('')
+        setFreeEmailSuccess(`Free access granted to ${data.email.email}`)
+      } else {
+        const data = await res.json()
+        setFreeEmailError(data.error || 'Failed to add email')
+      }
+    } catch {
+      setFreeEmailError('Failed to add email')
+    }
+    setAddingFreeEmail(false)
+  }
+
+  async function removeFreeEmail(id: string) {
+    try {
+      const res = await fetch(`/api/admin/free-access?id=${id}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        setFreeEmails(freeEmails.filter(e => e.id !== id))
+      } else {
+        setFreeEmailError('Failed to remove email')
+      }
+    } catch {
+      setFreeEmailError('Failed to remove email')
+    }
+  }
+
   function getCodeStatus(code: InviteCode): { text: string; color: string } {
     if (!code.is_active) {
       return { text: 'Deactivated', color: 'text-gray-400' }
@@ -129,7 +209,102 @@ export default function AdminSection() {
   const inactiveCodes = codes.filter(c => !c.is_active || (c.expires_at && new Date(c.expires_at) < new Date() && !c.used_by))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Free Access Emails Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Free Access</h2>
+          <p className="text-sm text-muted-foreground">
+            Grant free access to specific email addresses
+          </p>
+        </div>
+
+        {freeEmailError && (
+          <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-500">
+            {freeEmailError}
+          </div>
+        )}
+
+        {freeEmailSuccess && (
+          <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-500">
+            {freeEmailSuccess}
+          </div>
+        )}
+
+        {/* Add Email Form */}
+        <div className="rounded-xl border p-4 space-y-3">
+          <h3 className="font-medium">Grant Free Access</h3>
+
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1">
+              Gmail address
+            </label>
+            <input
+              type="email"
+              value={freeEmailInput}
+              onChange={(e) => setFreeEmailInput(e.target.value)}
+              placeholder="user@gmail.com"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1">
+              Label (who is this?)
+            </label>
+            <input
+              type="text"
+              value={freeEmailLabel}
+              onChange={(e) => setFreeEmailLabel(e.target.value)}
+              placeholder="e.g., Mom, Friend"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+
+          <button
+            onClick={addFreeEmail}
+            disabled={addingFreeEmail || !freeEmailInput.trim()}
+            className="w-full rounded-lg bg-green-500 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+          >
+            {addingFreeEmail ? 'Adding...' : 'Grant Access'}
+          </button>
+        </div>
+
+        {/* Free Access List */}
+        {freeEmails.length > 0 && (
+          <div className="space-y-2">
+            {freeEmails.map((entry) => (
+              <div key={entry.id} className="rounded-lg border p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">{entry.email}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {entry.label && <span>{entry.label} · </span>}
+                    Added {new Date(entry.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeFreeEmail(entry.id)}
+                  className="text-red-500 hover:text-red-600 text-xs"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {freeEmails.length === 0 && (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            No free access emails yet.
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
+      {/* Invite Codes Section */}
+      <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold">Invite Codes</h2>
         <p className="text-sm text-muted-foreground">
@@ -255,6 +430,7 @@ export default function AdminSection() {
           No invite codes yet. Create your first one above.
         </div>
       )}
+      </div>
     </div>
   )
 }

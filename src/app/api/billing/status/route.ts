@@ -44,11 +44,22 @@ export async function GET() {
     const allowedEmails = process.env.ALLOWED_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || []
     const isAllowedEmail = allowedEmails.includes(user.email?.toLowerCase() || '')
 
+    // Check if user is in the free_access_emails table (admin-granted)
+    let isAdminGrantedFree = false
+    if (!isAllowedEmail && user.email) {
+      const { data: freeAccessRow } = await admin
+        .from('free_access_emails')
+        .select('email')
+        .eq('email', user.email.toLowerCase())
+        .maybeSingle()
+      isAdminGrantedFree = !!freeAccessRow
+    }
+
     // Check if user has free tier access (claimed a free spot)
     const isFreeTier = user.is_free_tier === true
 
-    // Combined free access (either allowed email or free tier)
-    const isFreeAccess = isAllowedEmail || isFreeTier
+    // Combined free access (either allowed email, admin-granted, or free tier)
+    const isFreeAccess = isAllowedEmail || isAdminGrantedFree || isFreeTier
 
     // Determine if user has active access
     const hasActiveSubscription = user.subscription_status === 'active' ||

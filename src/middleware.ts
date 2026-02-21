@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { updateSession } from '@/lib/supabase/middleware'
 
 // Timeout for Supabase auth checks (prevents hanging pages)
@@ -101,18 +102,55 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Access control: Check if user has access via ALLOWED_EMAILS or subscription
-  // Users in ALLOWED_EMAILS get free access, others need a subscription
+  // Access control: Check if user has access via ALLOWED_EMAILS, free_access_emails table, or subscription
   if (user && (isProtectedRoute || isProtectedApi)) {
     const allowedEmails = process.env.ALLOWED_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || []
     const userEmail = user.email?.toLowerCase()
 
-    // Check if user is in the free access list
-    const hasFreeAccess = userEmail && allowedEmails.includes(userEmail)
+    // Check if user is in the env var free access list
+    let hasFreeAccess = userEmail ? allowedEmails.includes(userEmail) : false
+
+    // If not in env var list, check the free_access_emails database table
+    if (!hasFreeAccess && userEmail) {
+      try {
+        const adminClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          { auth: { autoRefreshToken: false, persistSession: false } }
+        )
+        const { data } = await adminClient
+          .from('free_access_emails')
+          .select('email')
+          .eq('email', userEmail)
+          .maybeSingle()
+
+        if (data) {
+          hasFreeAccess = true
+        } else {
+          // Also check if user has is_free_tier or active subscription
+          const { data: userData } = await adminClient
+            .from('users')
+            .select('is_free_tier, subscription_status, subscription_expires_at')
+            .eq('email', userEmail)
+            .maybeSingle()
+
+          if (userData) {
+            const isFreeTier = userData.is_free_tier === true
+            const hasSubscription = userData.subscription_status === 'active' ||
+              (userData.subscription_status === 'cancelled' &&
+                userData.subscription_expires_at &&
+                new Date(userData.subscription_expires_at as string) > new Date())
+            hasFreeAccess = isFreeTier || !!hasSubscription
+          }
+        }
+      } catch (error) {
+        console.error('Middleware DB check error:', error)
+        // On error, let the request through - the page will handle access control
+        hasFreeAccess = true
+      }
+    }
 
     if (!hasFreeAccess) {
-      // User needs a subscription - redirect to subscribe page
-      // The subscribe page will check their subscription status
       if (isProtectedApi) {
         return new NextResponse(
           JSON.stringify({ success: false, error: 'Subscription required' }),
