@@ -674,7 +674,7 @@ export default function FeedContent() {
           sidebarLockMode === 'open' ? 'md:ml-[240px]' : 'md:ml-[72px]'
         }`}>
           {/* Clean Header */}
-          <header className="sticky top-0 z-[105] border-b isolate bg-[#ffffff] dark:bg-[#262017]">
+          <header className="sticky top-0 z-[105] border-b isolate bg-[#faf8f4] dark:bg-[#262017]">
             <div className="flex h-11 sm:h-12 md:h-14 items-center gap-1.5 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-6">
               {/* Current view title - clickable on mobile to switch groups */}
               <button
@@ -720,7 +720,7 @@ export default function FeedContent() {
                 onClick={() => setShowMobileGroupSelector(false)}
               />
               {/* Dropdown */}
-              <div className="fixed left-0 right-0 top-[44px] sm:top-12 z-[151] bg-[#ffffff] dark:bg-[#262017] border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
+              <div className="fixed left-0 right-0 top-[44px] sm:top-12 z-[151] bg-[#faf8f4] dark:bg-[#262017] border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
                 {/* All Videos option */}
                 <button
                   onClick={() => {
@@ -765,7 +765,7 @@ export default function FeedContent() {
           )}
 
           {/* Filter chips */}
-          <div className="sticky top-11 sm:top-12 md:top-14 z-[104] border-b px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-2.5 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#ffffff] dark:bg-[#262017]">
+          <div className="sticky top-11 sm:top-12 md:top-14 z-[104] border-b px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-2.5 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#faf8f4] dark:bg-[#262017]">
             <button
               onClick={() => setShowWatchLater(!showWatchLater)}
               disabled={watchLaterCount === 0 && !showWatchLater}
