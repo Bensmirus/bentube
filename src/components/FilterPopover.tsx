@@ -361,7 +361,7 @@ export default function FilterPopover({
                     {localFilters.excludedChannelIds.size > 0 && `Hiding ${localFilters.excludedChannelIds.size}`}
                   </p>
                 )}
-                <div className="space-y-1 max-h-48 overflow-y-auto">
+                <div className="space-y-1">
                   {channels.map((channel) => {
                     const isIncluded = localFilters.includedChannelIds.has(channel.id)
                     const isExcluded = localFilters.excludedChannelIds.has(channel.id)
@@ -439,7 +439,7 @@ export default function FilterPopover({
                     {localFilters.excludedGroupIds.size > 0 && `Hiding ${localFilters.excludedGroupIds.size}`}
                   </p>
                 )}
-                <div className="space-y-1 max-h-48 overflow-y-auto">
+                <div className="space-y-1">
                   {groups.map((group) => {
                     const isIncluded = localFilters.includedGroupIds.has(group.id)
                     const isExcluded = localFilters.excludedGroupIds.has(group.id)
@@ -576,7 +576,7 @@ export default function FilterPopover({
                 {localFilters.excludedChannelIds.size > 0 && `Hiding ${localFilters.excludedChannelIds.size}`}
               </p>
             )}
-            <div className="space-y-1 max-h-48 overflow-y-auto">
+            <div className="space-y-1">
               {channels.map((channel) => {
                 const isIncluded = localFilters.includedChannelIds.has(channel.id)
                 const isExcluded = localFilters.excludedChannelIds.has(channel.id)
@@ -654,7 +654,7 @@ export default function FilterPopover({
                 {localFilters.excludedGroupIds.size > 0 && `Hiding ${localFilters.excludedGroupIds.size}`}
               </p>
             )}
-            <div className="space-y-1 max-h-48 overflow-y-auto">
+            <div className="space-y-1">
               {groups.map((group) => {
                 const isIncluded = localFilters.includedGroupIds.has(group.id)
                 const isExcluded = localFilters.excludedGroupIds.has(group.id)
