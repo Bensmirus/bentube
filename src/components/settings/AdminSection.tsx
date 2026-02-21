@@ -21,6 +21,17 @@ type FreeAccessEmail = {
   created_at: string
 }
 
+type UserStats = {
+  id: string
+  email: string
+  created_at: string
+  is_free_tier: boolean | null
+  subscription_status: string
+  video_count: number
+  channel_count: number
+  estimated_size_mb: number
+}
+
 export default function AdminSection() {
   const [codes, setCodes] = useState<InviteCode[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,9 +54,14 @@ export default function AdminSection() {
   const [freeEmailError, setFreeEmailError] = useState<string | null>(null)
   const [freeEmailSuccess, setFreeEmailSuccess] = useState<string | null>(null)
 
+  // Users monitoring state
+  const [users, setUsers] = useState<UserStats[]>([])
+  const [usersLoading, setUsersLoading] = useState(true)
+
   useEffect(() => {
     fetchCodes()
     fetchFreeEmails()
+    fetchUsers()
   }, [])
 
   async function fetchCodes() {
@@ -131,6 +147,19 @@ export default function AdminSection() {
     }
   }
 
+  async function fetchUsers() {
+    try {
+      const res = await fetch('/api/admin/users')
+      if (res.ok) {
+        const data = await res.json()
+        setUsers(data.users || [])
+      }
+    } catch {
+      // Silent fail
+    }
+    setUsersLoading(false)
+  }
+
   async function addFreeEmail() {
     if (!freeEmailInput.trim() || !freeEmailInput.includes('@')) {
       setFreeEmailError('Enter a valid email address')
@@ -210,6 +239,71 @@ export default function AdminSection() {
 
   return (
     <div className="space-y-8">
+      {/* Users Monitoring Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Users</h2>
+            <p className="text-sm text-muted-foreground">
+              {users.length} registered user{users.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button
+            onClick={() => { setUsersLoading(true); fetchUsers() }}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {usersLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            No users yet.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {users.map((user) => (
+              <div key={user.id} className="rounded-lg border p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium truncate">{user.email}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    user.is_free_tier ? 'bg-green-500/10 text-green-500' :
+                    user.subscription_status === 'active' ? 'bg-blue-500/10 text-blue-500' :
+                    'bg-gray-500/10 text-gray-400'
+                  }`}>
+                    {user.is_free_tier ? 'Free' :
+                     user.subscription_status === 'active' ? 'Paid' : 'None'}
+                  </span>
+                </div>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>{user.video_count.toLocaleString()} videos</span>
+                  <span>{user.channel_count} channels</span>
+                  <span>~{user.estimated_size_mb} MB</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Joined {new Date(user.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+
+            {/* Total summary */}
+            <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 mt-3">
+              <div className="flex gap-4 text-xs font-medium">
+                <span>Total: {users.reduce((sum, u) => sum + u.video_count, 0).toLocaleString()} videos</span>
+                <span>~{users.reduce((sum, u) => sum + u.estimated_size_mb, 0).toFixed(1)} MB</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
       {/* Free Access Emails Section */}
       <div className="space-y-4">
         <div>
