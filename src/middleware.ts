@@ -21,6 +21,8 @@ const protectedApiRoutes = [
   '/api/tags',
   '/api/sync',
   '/api/notes',
+  '/api/channels',
+  '/api/videos',
   '/api/billing/checkout',
   '/api/billing/status',
   '/api/billing/portal',
