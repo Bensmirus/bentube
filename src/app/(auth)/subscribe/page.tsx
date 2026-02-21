@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 type SubscriptionStatus = {
   hasAccess: boolean
@@ -284,6 +285,20 @@ export default function SubscribePage() {
           >
             ben.ware.tools@gmail.com
           </a>
+        </div>
+
+        {/* Logout */}
+        <div className="text-center pt-2">
+          <button
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              router.replace('/login')
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Log out
+          </button>
         </div>
       </div>
     </div>
