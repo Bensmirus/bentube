@@ -352,31 +352,6 @@ export default function FeedContent() {
     }
   }, [selectedVideoIds, selectedGroupId, deferredSearchQuery, showInProgress, showWatchLater, selectedTagIds, queryClient, deleteMultipleVideosMutation])
 
-  // Handle group reorder via drag and drop
-  const handleReorderGroups = useCallback(async (groupIds: string[]) => {
-    // Optimistic update
-    queryClient.setQueryData(['groups'], (old: { groups: typeof groups } | undefined) => {
-      if (!old) return old
-      const reordered = groupIds.map((id) => old.groups.find((g) => g.id === id)).filter(Boolean)
-      return { groups: reordered }
-    })
-
-    try {
-      const res = await fetch('/api/groups/reorder', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupIds }),
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to reorder groups')
-      }
-    } catch (error) {
-      console.error('Failed to reorder groups:', error)
-      // Revert on failure
-      queryClient.invalidateQueries({ queryKey: ['groups'] })
-    }
-  }, [queryClient])
 
   // Tag handlers
   const handleTag = useCallback((videoId: string, event: React.MouseEvent) => {
