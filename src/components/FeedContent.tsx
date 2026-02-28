@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getInternalUserId } from '@/lib/supabase/get-user'
 import VideoCard, { type FeedVideo } from './VideoCard'
 import VideoListItem from './VideoListItem'
+import { WaveformIcon } from './groups/EditGroupModal'
 import BottomNav from './BottomNav'
 import CreateGroupModal from './CreateGroupModal'
 import FirstTimeImportModal from './FirstTimeImportModal'
@@ -617,49 +618,51 @@ export default function FeedContent() {
 
         {/* Main content area - full width (no sidebar) */}
         <div className="pb-16 min-h-screen flex flex-col">
-          {/* Header — group strip + search in one row */}
+          {/* Header — two-row: search top-right + group cards wrapping below */}
           <header className="sticky top-0 z-[105] border-b isolate bg-[#faf8f4] dark:bg-[#262017]">
-            <div className="flex h-11 sm:h-12 md:h-14 items-center gap-2 px-2 sm:px-3 md:px-6">
-              {/* Group cards — scrollable, fills available space */}
-              <div className="flex-1 overflow-x-auto no-scrollbar min-w-0">
-                <div className="flex items-center gap-2 w-max">
+            {/* Row 1: search pinned right, group cards fill and wrap */}
+            <div className="flex items-center gap-2 px-2 sm:px-3 md:px-6 pt-2 pb-1">
+              {/* Group cards — wrap into two rows */}
+              <div className="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                <button
+                  onClick={() => setSelectedGroupId(null)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                    selectedGroupId === null
+                      ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
+                      : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <span>🎬</span>
+                  <span>All</span>
+                </button>
+                {groups.map((group) => (
                   <button
-                    onClick={() => setSelectedGroupId(null)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
-                      selectedGroupId === null
+                    key={group.id}
+                    onClick={() => setSelectedGroupId(group.id)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                      selectedGroupId === group.id
                         ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
                         : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <span>🎬</span>
-                    <span>All</span>
+                    {group.icon === 'waveform'
+                      ? <WaveformIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                      : <span>{group.icon}</span>
+                    }
+                    <span>{group.name}</span>
                   </button>
-                  {groups.map((group) => (
-                    <button
-                      key={group.id}
-                      onClick={() => setSelectedGroupId(group.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
-                        selectedGroupId === group.id
-                          ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
-                          : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <span>{group.icon}</span>
-                      <span>{group.name}</span>
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setShowCreateGroupModal(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground/50 text-xs sm:text-sm whitespace-nowrap flex-shrink-0 hover:border-accent hover:text-accent transition-all"
-                  >
-                    <span>+</span>
-                    <span>Group</span>
-                  </button>
-                </div>
+                ))}
+                <button
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground/50 text-xs whitespace-nowrap hover:border-accent hover:text-accent transition-all"
+                >
+                  <span>+</span>
+                  <span>Group</span>
+                </button>
               </div>
 
-              {/* Search — pinned to the right */}
-              <div className="flex-shrink-0 w-[120px] sm:w-[180px] md:w-[240px]">
+              {/* Search — pinned to the right, aligned to first row */}
+              <div className="flex-shrink-0 self-start w-[110px] sm:w-[170px] md:w-[220px]">
                 <div className="relative">
                   <SearchIcon className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground" />
                   <input
@@ -672,10 +675,11 @@ export default function FeedContent() {
                 </div>
               </div>
             </div>
+            <div className="pb-1" />
           </header>
 
           {/* Filter chips */}
-          <div className="sticky top-11 sm:top-12 md:top-14 z-[104] border-b px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-2.5 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#faf8f4] dark:bg-[#262017]">
+          <div className="border-b px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-2.5 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar md:flex-wrap bg-[#faf8f4] dark:bg-[#262017]">
             <button
               onClick={() => setShowWatchLater(!showWatchLater)}
               disabled={watchLaterCount === 0 && !showWatchLater}
