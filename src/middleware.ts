@@ -46,6 +46,11 @@ const publicRoutes = [
 ]
 
 export async function middleware(request: NextRequest) {
+  // Dev bypass: skip all auth on localhost
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next()
+  }
+
   const { pathname } = request.nextUrl
 
   // Skip middleware for public routes

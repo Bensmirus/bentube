@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { getInternalUserId } from '@/lib/supabase/get-user'
 import VideoCard, { type FeedVideo } from './VideoCard'
 import VideoListItem from './VideoListItem'
-import GroupSidebar from './GroupSidebar'
 import BottomNav from './BottomNav'
 import CreateGroupModal from './CreateGroupModal'
 import FirstTimeImportModal from './FirstTimeImportModal'
@@ -63,9 +62,6 @@ export default function FeedContent() {
   const [, startTransition] = useTransition()
   const [loadingTooLong, setLoadingTooLong] = useState(false)
 
-  // Sidebar lock mode state
-  const [sidebarLockMode, setSidebarLockMode] = useState<'auto' | 'open' | 'closed'>('auto')
-
   // Tag popover state
   const [tagPopoverVideoId, setTagPopoverVideoId] = useState<string | null>(null)
   const [tagPopoverPosition, setTagPopoverPosition] = useState<{ top: number; left: number } | null>(null)
@@ -84,8 +80,6 @@ export default function FeedContent() {
   // Filter popover state
   const [showFilterPopover, setShowFilterPopover] = useState(false)
 
-  // Mobile group selector state
-  const [showMobileGroupSelector, setShowMobileGroupSelector] = useState(false)
   const [filterPosition, setFilterPosition] = useState<{ top: number; left: number } | null>(null)
   const [filters, setFilters] = useState<FilterState>({
     dateFilter: 'any',
@@ -99,20 +93,6 @@ export default function FeedContent() {
 
   // Scroll restoration
   const { saveScrollPosition } = useScrollRestoration('feed-scroll')
-
-  // Load sidebar lock mode from localStorage and listen for changes
-  useEffect(() => {
-    const saved = localStorage.getItem('sidebar-lock-mode') as 'auto' | 'open' | 'closed' | null
-    if (saved && ['auto', 'open', 'closed'].includes(saved)) {
-      setSidebarLockMode(saved)
-    }
-
-    const handleLockModeChange = (e: CustomEvent<'auto' | 'open' | 'closed'>) => {
-      setSidebarLockMode(e.detail)
-    }
-    window.addEventListener('sidebar-lock-mode-change', handleLockModeChange as EventListener)
-    return () => window.removeEventListener('sidebar-lock-mode-change', handleLockModeChange as EventListener)
-  }, [])
 
   // Fetch user ID for watch progress tracking
   useEffect(() => {
@@ -660,42 +640,51 @@ export default function FeedContent() {
           />
         )}
 
-        {/* Foldable Sidebar */}
-        <GroupSidebar
-          groups={groups}
-          selectedGroupId={selectedGroupId}
-          onSelectGroup={setSelectedGroupId}
-          onCreateGroup={() => setShowCreateGroupModal(true)}
-          onReorderGroups={handleReorderGroups}
-        />
-
-        {/* Main content area - offset for sidebar */}
-        <div className={`pb-16 min-h-screen flex flex-col transition-[margin] duration-200 ${
-          sidebarLockMode === 'open' ? 'md:ml-[240px]' : 'md:ml-[72px]'
-        }`}>
-          {/* Clean Header */}
+        {/* Main content area - full width (no sidebar) */}
+        <div className="pb-16 min-h-screen flex flex-col">
+          {/* Header — group strip + search in one row */}
           <header className="sticky top-0 z-[105] border-b isolate bg-[#faf8f4] dark:bg-[#262017]">
-            <div className="flex h-11 sm:h-12 md:h-14 items-center gap-1.5 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-6">
-              {/* Current view title - clickable on mobile to switch groups */}
-              <button
-                onClick={() => setShowMobileGroupSelector(!showMobileGroupSelector)}
-                className="flex items-center gap-1.5 sm:gap-2 md:gap-3 md:pointer-events-none flex-shrink-0"
-              >
-                <span className="text-lg sm:text-xl">{selectedGroup?.icon || '🎬'}</span>
-                <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate max-w-[80px] sm:max-w-[120px] md:max-w-none">
-                  {selectedGroup?.name || 'All'}
-                </h1>
-                {/* Dropdown arrow - mobile only */}
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground md:hidden flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+            <div className="flex h-11 sm:h-12 md:h-14 items-center gap-2 px-2 sm:px-3 md:px-6">
+              {/* Group cards — scrollable, fills available space */}
+              <div className="flex-1 overflow-x-auto no-scrollbar min-w-0">
+                <div className="flex items-center gap-2 w-max">
+                  <button
+                    onClick={() => setSelectedGroupId(null)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
+                      selectedGroupId === null
+                        ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
+                        : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span>🎬</span>
+                    <span>All</span>
+                  </button>
+                  {groups.map((group) => (
+                    <button
+                      key={group.id}
+                      onClick={() => setSelectedGroupId(group.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all ${
+                        selectedGroupId === group.id
+                          ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
+                          : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <span>{group.icon}</span>
+                      <span>{group.name}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setShowCreateGroupModal(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground/50 text-xs sm:text-sm whitespace-nowrap flex-shrink-0 hover:border-accent hover:text-accent transition-all"
+                  >
+                    <span>+</span>
+                    <span>Group</span>
+                  </button>
+                </div>
+              </div>
 
-              {/* Spacer */}
-              <div className="flex-1 min-w-0" />
-
-              {/* Search */}
-              <div className="flex-1 max-w-[140px] sm:max-w-[200px] md:max-w-[280px] lg:w-80">
+              {/* Search — pinned to the right */}
+              <div className="flex-shrink-0 w-[120px] sm:w-[180px] md:w-[240px]">
                 <div className="relative">
                   <SearchIcon className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground" />
                   <input
@@ -707,62 +696,8 @@ export default function FeedContent() {
                   />
                 </div>
               </div>
-
             </div>
           </header>
-
-          {/* Mobile Group Selector Dropdown */}
-          {showMobileGroupSelector && (
-            <>
-              {/* Backdrop - starts below header so it doesn't block the header button */}
-              <div
-                className="fixed inset-0 top-[44px] sm:top-12 z-[150] md:hidden"
-                onClick={() => setShowMobileGroupSelector(false)}
-              />
-              {/* Dropdown */}
-              <div className="fixed left-0 right-0 top-[44px] sm:top-12 z-[151] bg-[#faf8f4] dark:bg-[#262017] border-b shadow-lg md:hidden max-h-[60vh] overflow-y-auto">
-                {/* All Videos option */}
-                <button
-                  onClick={() => {
-                    setSelectedGroupId(null)
-                    setShowMobileGroupSelector(false)
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                    selectedGroupId === null ? 'bg-accent/10 text-accent' : 'hover:bg-muted active:bg-muted'
-                  }`}
-                >
-                  <span className="text-xl">🎬</span>
-                  <span className="flex-1 text-sm font-medium">All Videos</span>
-                  {selectedGroupId === null && (
-                    <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-                {/* Group list */}
-                {groups.map((group) => (
-                  <button
-                    key={group.id}
-                    onClick={() => {
-                      setSelectedGroupId(group.id)
-                      setShowMobileGroupSelector(false)
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                      selectedGroupId === group.id ? 'bg-accent/10 text-accent' : 'hover:bg-muted active:bg-muted'
-                    }`}
-                  >
-                    <span className="text-xl">{group.icon}</span>
-                    <span className="flex-1 text-sm font-medium">{group.name}</span>
-                    {selectedGroupId === group.id && (
-                      <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
 
           {/* Filter chips */}
           <div className="sticky top-11 sm:top-12 md:top-14 z-[104] border-b px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-2.5 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar md:flex-wrap isolate bg-[#faf8f4] dark:bg-[#262017]">

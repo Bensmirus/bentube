@@ -11,6 +11,11 @@ export default function FeedPage() {
   const [retryCount, setRetryCount] = useState(0)
 
   const checkSession = useCallback(async () => {
+    // Dev bypass: skip auth check on localhost
+    if (process.env.NODE_ENV === 'development') {
+      setAuthState('authenticated')
+      return
+    }
     setAuthState('loading')
     try {
       const supabase = createClient()
