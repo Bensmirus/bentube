@@ -92,6 +92,10 @@ export default function FeedContent() {
   })
   const [groupChannels, setGroupChannels] = useState<{ id: string; title: string; thumbnail: string | null }[]>([])
 
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<{ count: number; groupId: string | null } | null>(null)
+
   // Scroll restoration
   const { saveScrollPosition } = useScrollRestoration('feed-scroll')
 
@@ -547,6 +551,47 @@ export default function FeedContent() {
     ? groups.find(g => g.id === selectedGroupId)
     : null
 
+  // Sync handler - syncs new videos for the selected group (or all groups)
+  const handleSync = useCallback(async () => {
+    if (isSyncing) return
+    setIsSyncing(true)
+    setSyncResult(null)
+
+    try {
+      const body: Record<string, string> = {}
+      if (selectedGroupId) {
+        body.groupId = selectedGroupId
+      }
+
+      const res = await fetch('/api/sync/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        console.error('Sync failed:', data.error)
+        return
+      }
+
+      setSyncResult({ count: data.videosImported || 0, groupId: selectedGroupId })
+
+      // Refresh the feed to show new videos
+      queryClient.invalidateQueries({ queryKey: ['infiniteFeed'] })
+      queryClient.invalidateQueries({ queryKey: ['inProgressCount'] })
+      queryClient.invalidateQueries({ queryKey: ['watchLaterCount'] })
+
+      // Auto-hide result after 4 seconds
+      setTimeout(() => setSyncResult(null), 4000)
+    } catch (error) {
+      console.error('Sync failed:', error)
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [isSyncing, selectedGroupId, queryClient])
+
   return (
     <WatchProgressProvider userId={userId || undefined}>
       <div className="min-h-screen bg-background relative">
@@ -766,6 +811,31 @@ export default function FeedContent() {
                 )}
               </button>
             )}
+
+            {/* Sync button */}
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              title={selectedGroupId ? 'Sync new videos for this group' : 'Sync new videos for all groups'}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] ${
+                isSyncing
+                  ? 'bg-accent text-white'
+                  : syncResult && syncResult.groupId === selectedGroupId
+                  ? 'bg-green-600 text-white'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              } disabled:cursor-not-allowed`}
+            >
+              <SyncIcon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>
+                {isSyncing
+                  ? 'Syncing…'
+                  : syncResult && syncResult.groupId === selectedGroupId
+                  ? syncResult.count > 0
+                    ? `+${syncResult.count} new`
+                    : 'Up to date'
+                  : 'Sync'}
+              </span>
+            </button>
 
             {/* Spacer */}
             <div className="flex-1 min-w-2 sm:min-w-4" />
@@ -1011,6 +1081,14 @@ function SelectIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
+function SyncIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
   )
 }
