@@ -7,6 +7,7 @@ import type { FeedVideo } from '@/components/VideoCard'
 type PlaylistSource =
   | { type: 'group'; groupId: string; groupName: string }
   | { type: 'shuffle' }
+  | { type: 'all' }
   | { type: 'manual' }
 
 type PlaylistState = {
@@ -23,6 +24,7 @@ type PlaylistContextType = {
   hasPrevious: boolean
   loadGroupPlaylist: (groupId: string, groupName: string) => Promise<void>
   loadShuffledPlaylist: (videos: FeedVideo[]) => void
+  loadOrderedPlaylist: (videos: FeedVideo[]) => void
   next: () => void
   previous: () => void
   jumpTo: (index: number) => void
@@ -109,6 +111,21 @@ export function PlaylistProvider({ children }: { children: ReactNode }) {
     router.push(`/watch/${playlistVideos[0].id}?playlist=shuffle`)
   }, [router])
 
+  const loadOrderedPlaylist = useCallback((videos: FeedVideo[]) => {
+    if (videos.length === 0) return
+
+    const playlistVideos = videos.slice(0, 50)
+
+    setPlaylist({
+      videos: playlistVideos,
+      currentIndex: 0,
+      source: { type: 'all' },
+      isActive: true,
+    })
+
+    router.push(`/watch/${playlistVideos[0].id}?playlist=all`)
+  }, [router])
+
   const next = useCallback(() => {
     if (!hasNext) return
 
@@ -124,6 +141,8 @@ export function PlaylistProvider({ children }: { children: ReactNode }) {
       ? `?playlist=group:${playlist.source.groupId}`
       : playlist.source?.type === 'shuffle'
       ? '?playlist=shuffle'
+      : playlist.source?.type === 'all'
+      ? '?playlist=all'
       : ''
     router.push(`/watch/${nextVideo.id}${playlistParam}`)
   }, [hasNext, playlist, router])
@@ -143,6 +162,8 @@ export function PlaylistProvider({ children }: { children: ReactNode }) {
       ? `?playlist=group:${playlist.source.groupId}`
       : playlist.source?.type === 'shuffle'
       ? '?playlist=shuffle'
+      : playlist.source?.type === 'all'
+      ? '?playlist=all'
       : ''
     router.push(`/watch/${prevVideo.id}${playlistParam}`)
   }, [hasPrevious, playlist, router])
@@ -161,6 +182,8 @@ export function PlaylistProvider({ children }: { children: ReactNode }) {
       ? `?playlist=group:${playlist.source.groupId}`
       : playlist.source?.type === 'shuffle'
       ? '?playlist=shuffle'
+      : playlist.source?.type === 'all'
+      ? '?playlist=all'
       : ''
     router.push(`/watch/${targetVideo.id}${playlistParam}`)
   }, [playlist, router])
@@ -196,6 +219,7 @@ export function PlaylistProvider({ children }: { children: ReactNode }) {
         hasPrevious,
         loadGroupPlaylist,
         loadShuffledPlaylist,
+        loadOrderedPlaylist,
         next,
         previous,
         jumpTo,

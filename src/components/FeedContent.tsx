@@ -44,7 +44,7 @@ type ViewMode = 'grid' | 'list'
 export default function FeedContent() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { loadGroupPlaylist, loadShuffledPlaylist, isLoading: isPlaylistLoading } = usePlaylist()
+  const { loadGroupPlaylist, loadShuffledPlaylist, loadOrderedPlaylist, isLoading: isPlaylistLoading } = usePlaylist()
 
   // User ID for watch progress tracking
   const [userId, setUserId] = useState<string | null>(null)
@@ -663,11 +663,64 @@ export default function FeedContent() {
 
         {/* Main content area - full width (no sidebar) */}
         <div className="pb-16 min-h-screen flex flex-col">
-          {/* Header — two-row: search top-right + group cards wrapping below */}
+          {/* Header — group categories + search */}
           <header className="sticky top-0 z-[105] border-b isolate bg-[#faf8f4] dark:bg-[#262017]">
-            {/* Row 1: search pinned right, group cards fill and wrap */}
-            <div className="flex items-center gap-2 px-2 sm:px-3 md:px-6 pt-2 pb-1">
-              {/* Group cards — wrap into two rows */}
+            {/* Mobile: search on its own row */}
+            <div className="flex sm:hidden px-2 pt-2 pb-1">
+              <div className="relative w-full">
+                <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-full h-8 pl-7 pr-2 rounded-lg border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                />
+              </div>
+            </div>
+            {/* Mobile: categories spread across full width */}
+            <div className="flex sm:hidden px-2 pt-1 pb-1">
+              <div className="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                <button
+                  onClick={() => setSelectedGroupId(null)}
+                  className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                    selectedGroupId === null
+                      ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
+                      : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <span>🎬</span>
+                  <span>All</span>
+                </button>
+                {groups.map((group) => (
+                  <button
+                    key={group.id}
+                    onClick={() => setSelectedGroupId(group.id)}
+                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                      selectedGroupId === group.id
+                        ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
+                        : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {group.icon === 'waveform'
+                      ? <WaveformIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                      : <span>{group.icon}</span>
+                    }
+                    <span>{group.name}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowCreateGroupModal(true)}
+                  className="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground/50 text-xs whitespace-nowrap hover:border-accent hover:text-accent transition-all"
+                >
+                  <span>+</span>
+                  <span>Group</span>
+                </button>
+              </div>
+            </div>
+            {/* Desktop/tablet: original layout with search pinned right */}
+            <div className="hidden sm:flex items-center gap-2 px-3 md:px-6 pt-2 pb-1">
+              {/* Group cards — wrap into rows */}
               <div className="flex-1 flex flex-wrap gap-1.5 min-w-0">
                 <button
                   onClick={() => setSelectedGroupId(null)}
@@ -707,15 +760,15 @@ export default function FeedContent() {
               </div>
 
               {/* Search — pinned to the right, aligned to first row */}
-              <div className="flex-shrink-0 self-start w-[110px] sm:w-[170px] md:w-[220px]">
+              <div className="flex-shrink-0 self-start w-[170px] md:w-[220px]">
                 <div className="relative">
-                  <SearchIcon className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground" />
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="w-full h-8 md:h-9 pl-7 sm:pl-8 md:pl-9 pr-2 sm:pr-3 md:pr-4 rounded-lg border bg-background text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                    className="w-full h-9 pl-8 md:pl-9 pr-3 md:pr-4 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
                   />
                 </div>
               </div>
@@ -739,7 +792,7 @@ export default function FeedContent() {
               <span className="text-xs sm:text-sm md:text-base">⏰</span>
               <span>Later</span>
             </button>
-            {/* Quick Play button - only show when a group is selected */}
+            {/* Quick Play button - show when a group is selected */}
             {selectedGroup && (
               <button
                 onClick={() => loadGroupPlaylist(selectedGroup.id, selectedGroup.name)}
@@ -752,6 +805,22 @@ export default function FeedContent() {
                 ) : (
                   <PlayIcon className="w-4 h-4" />
                 )}
+              </button>
+            )}
+            {/* Play All button - show on "All" when a watch filter is active */}
+            {!selectedGroupId && videos.length > 0 && (showWatchLater || showInProgress || hasActiveFilters || deferredSearchQuery) && (
+              <button
+                onClick={() => loadOrderedPlaylist(videos)}
+                disabled={isPlaylistLoading}
+                title="Play all visible videos"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-all min-h-[32px] bg-accent text-white hover:bg-accent/90 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                {isPlaylistLoading ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <PlayIcon className="w-3.5 h-3.5" />
+                )}
+                <span>Play All</span>
               </button>
             )}
             {/* Shuffle Play button - plays random videos from current feed */}

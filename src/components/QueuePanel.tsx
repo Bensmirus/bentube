@@ -12,7 +12,7 @@ export default function QueuePanel({ isOpen, onClose }: QueuePanelProps) {
 
   if (!isOpen || !playlist.isActive) return null
 
-  const sourceName = playlist.source?.type === 'group' ? playlist.source.groupName : 'Playlist'
+  const sourceName = playlist.source?.type === 'group' ? playlist.source.groupName : playlist.source?.type === 'all' ? 'Play All' : 'Playlist'
 
   return (
     <div className="fixed right-0 top-0 bottom-0 w-80 isolate bg-[#ffffff] dark:bg-[#262017] border-l shadow-lg z-[120] flex flex-col">
