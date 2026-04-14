@@ -683,7 +683,7 @@ export default function FeedContent() {
               <div className="flex-1 flex flex-wrap gap-1.5 min-w-0">
                 <button
                   onClick={() => setSelectedGroupId(null)}
-                  className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl border text-xs font-medium whitespace-nowrap overflow-hidden transition-all ${
                     selectedGroupId === null
                       ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
                       : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
@@ -696,7 +696,7 @@ export default function FeedContent() {
                   <button
                     key={group.id}
                     onClick={() => setSelectedGroupId(group.id)}
-                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl border text-xs font-medium whitespace-nowrap transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1 rounded-xl border text-xs font-medium whitespace-nowrap overflow-hidden transition-all ${
                       selectedGroupId === group.id
                         ? 'bg-orange-50 dark:bg-orange-950/20 border-accent text-accent shadow-sm font-semibold'
                         : 'bg-muted border-transparent text-muted-foreground hover:text-foreground'
@@ -706,12 +706,12 @@ export default function FeedContent() {
                       ? <WaveformIcon className="w-3.5 h-3.5 flex-shrink-0" />
                       : <span>{group.icon}</span>
                     }
-                    <span>{group.name}</span>
+                    <span className="truncate">{group.name}</span>
                   </button>
                 ))}
                 <button
                   onClick={() => setShowCreateGroupModal(true)}
-                  className="flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground/50 text-xs whitespace-nowrap hover:border-accent hover:text-accent transition-all"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground/50 text-xs whitespace-nowrap overflow-hidden hover:border-accent hover:text-accent transition-all"
                 >
                   <span>+</span>
                   <span>Group</span>
