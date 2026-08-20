@@ -9,6 +9,8 @@ type Channel = {
   thumbnail: string | null
 }
 
+type AddedChannel = Channel
+
 type Playlist = {
   id: string
   youtube_playlist_id: string
@@ -30,7 +32,7 @@ type Group = {
   icon: string
   color: string
   channel_count: number
-  video_count: number
+  video_count?: number
 }
 
 type EditGroupModalProps = {
@@ -38,6 +40,9 @@ type EditGroupModalProps = {
   onClose: () => void
   onSave: (data: { name: string; icon: string; color: string }) => Promise<void>
   onSaveChannels: (count: number) => void
+  onAddChannel?: () => void
+  addedChannel?: AddedChannel | null
+  isChildModalOpen?: boolean
 }
 
 // Curated list of popular icons with search keywords
@@ -137,7 +142,15 @@ const COLORS = [
   '#212121', '#424242', '#616161', '#757575', '#9E9E9E', '#BDBDBD', '#E0E0E0', '#F5F5F5',
 ]
 
-export default function EditGroupModal({ group, onClose, onSave, onSaveChannels }: EditGroupModalProps) {
+export default function EditGroupModal({
+  group,
+  onClose,
+  onSave,
+  onSaveChannels,
+  onAddChannel,
+  addedChannel = null,
+  isChildModalOpen = false,
+}: EditGroupModalProps) {
   const [name, setName] = useState(group?.name || '')
   const [icon, setIcon] = useState(group?.icon || '📺')
   const [color, setColor] = useState(group?.color || '#C19A6B')
@@ -192,11 +205,38 @@ export default function EditGroupModal({ group, onClose, onSave, onSaveChannels 
 
   useEffect(() => {
     inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
     if (group) {
       loadChannels()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [group?.id])
+
+  useEffect(() => {
+    if (!addedChannel) return
+
+    setAllChannels(previous => (
+      previous.some(channel => channel.id === addedChannel.id)
+        ? previous
+        : [...previous, addedChannel]
+    ))
+    setSelectedChannelIds(previous => {
+      const next = new Set(previous)
+      next.add(addedChannel.id)
+      return next
+    })
+  }, [addedChannel])
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !showIconPicker && !showColorPicker && !isChildModalOpen) onClose()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose, showIconPicker, showColorPicker, isChildModalOpen])
 
   const loadChannels = async () => {
     if (!group) return
@@ -312,12 +352,15 @@ export default function EditGroupModal({ group, onClose, onSave, onSaveChannels 
 
         if (channelsRes.ok) {
           onSaveChannels(selectedChannelIds.size)
+        } else {
+          throw new Error('Failed to save channels')
         }
 
         if (!playlistsRes.ok) {
-          console.error('Failed to save playlists')
+          throw new Error('Failed to save playlists')
         }
       }
+      onClose()
     } catch (error) {
       console.error('Failed to save:', error)
     } finally {
@@ -390,19 +433,32 @@ export default function EditGroupModal({ group, onClose, onSave, onSaveChannels 
                       )}
                     </p>
 
-                    {/* Show selected toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setShowSelectedOnly(!showSelectedOnly)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        showSelectedOnly
-                          ? 'bg-accent text-white'
-                          : 'bg-muted text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <CheckIcon className="w-3 h-3" />
-                      <span>Selected only</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {/* Show selected toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          showSelectedOnly
+                            ? 'bg-accent text-white'
+                            : 'bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <CheckIcon className="w-3 h-3" />
+                        <span>Selected only</span>
+                      </button>
+                      {onAddChannel && (
+                        <button
+                          type="button"
+                          onClick={onAddChannel}
+                          className="w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center hover:bg-accent/90 transition-colors"
+                          aria-label={`Add a channel to ${group.name}`}
+                          title="Add channel"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Search bar */}
@@ -624,6 +680,14 @@ function CheckIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
     </svg>
   )
 }

@@ -7,6 +7,8 @@ import { getEffectiveVideoLimit } from '@/lib/user/video-limit'
 import { acquireSyncLock, releaseSyncLock } from '@/lib/youtube/sync-progress'
 import { NextRequest, NextResponse } from 'next/server'
 
+type AddChannelOutcome = 'already_in_group' | 'added_to_group' | 'imported_and_added'
+
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const admin = createAdminClient()
@@ -25,11 +27,79 @@ export async function POST(request: NextRequest) {
     videoLimit: requestedVideoLimit,
   } = await request.json()
 
-  if (!channelId || !groupIds || groupIds.length === 0) {
+  if (!channelId || !Array.isArray(groupIds) || groupIds.length === 0) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Acquire sync lock to prevent race conditions with ongoing syncs
+  // Verify all group IDs belong to this user before checking or changing membership.
+  const { data: userGroups, error: groupsError } = await admin
+    .from('channel_groups')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', groupIds)
+
+  if (groupsError) {
+    console.error('[AddChannel] Failed to verify groups:', groupsError)
+    return NextResponse.json({ error: 'Failed to verify groups' }, { status: 500 })
+  }
+
+  const validGroupIds = (userGroups || []).map((g: { id: string }) => g.id)
+  if (validGroupIds.length !== groupIds.length) {
+    return NextResponse.json({ error: 'Invalid group selection' }, { status: 403 })
+  }
+
+  // A shared channel record is not enough to mean this user imported it.
+  // user_subscriptions remains the canonical per-user subscription truth.
+  const { data: existingChannel, error: existingChannelError } = await admin
+    .from('channels')
+    .select('id')
+    .eq('youtube_id', channelId)
+    .maybeSingle()
+
+  if (existingChannelError) {
+    console.error('[AddChannel] Failed to check channel:', existingChannelError)
+    return NextResponse.json({ error: 'Failed to check channel' }, { status: 500 })
+  }
+
+  let wasImportedByUser = false
+  if (existingChannel) {
+    const existingChannelId = (existingChannel as { id: string }).id
+    const [{ data: existingSubscription, error: subscriptionCheckError }, { data: existingMemberships, error: membershipCheckError }] = await Promise.all([
+      admin
+        .from('user_subscriptions')
+        .select('channel_id')
+        .eq('user_id', userId)
+        .eq('channel_id', existingChannelId)
+        .maybeSingle(),
+      admin
+        .from('group_channels')
+        .select('group_id')
+        .eq('channel_id', existingChannelId)
+        .in('group_id', groupIds),
+    ])
+
+    if (subscriptionCheckError || membershipCheckError) {
+      console.error('[AddChannel] Failed to check subscription membership:', subscriptionCheckError || membershipCheckError)
+      return NextResponse.json({ error: 'Failed to check subscription' }, { status: 500 })
+    }
+
+    wasImportedByUser = !!existingSubscription
+    const existingGroupIds = new Set(
+      ((existingMemberships || []) as { group_id: string }[]).map(membership => membership.group_id)
+    )
+    const alreadyInEverySelectedGroup = groupIds.every((groupId: string) => existingGroupIds.has(groupId))
+
+    if (wasImportedByUser && alreadyInEverySelectedGroup) {
+      return NextResponse.json({
+        success: true,
+        outcome: 'already_in_group' satisfies AddChannelOutcome,
+        channelId: existingChannelId,
+        videosImported: 0,
+      })
+    }
+  }
+
+  // Only operations that add or sync need the user's sync lock.
   const lockId = await acquireSyncLock(userId)
   if (!lockId) {
     return NextResponse.json(
@@ -39,23 +109,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Verify all group IDs belong to this user
-    const { data: userGroups, error: groupsError } = await admin
-      .from('channel_groups')
-      .select('id')
-      .eq('user_id', userId)
-      .in('id', groupIds)
-
-    if (groupsError) {
-      console.error('[AddChannel] Failed to verify groups:', groupsError)
-      return NextResponse.json({ error: 'Failed to verify groups' }, { status: 500 })
-    }
-
-    const validGroupIds = (userGroups || []).map((g: { id: string }) => g.id)
-    if (validGroupIds.length !== groupIds.length) {
-      return NextResponse.json({ error: 'Invalid group selection' }, { status: 403 })
-    }
-
     // 1. Upsert channel (creates if doesn't exist)
     // Note: 'as never' casts are needed due to incomplete Supabase type generation
     // TODO: Regenerate Supabase types with `npx supabase gen types typescript`
@@ -79,12 +132,17 @@ export async function POST(request: NextRequest) {
     const channel = channelData as { id: string }
 
     // 2. Create user subscription
-    await admin
+    const { error: subscriptionError } = await admin
       .from('user_subscriptions')
       .upsert({
         user_id: userId,
         channel_id: channel.id,
       } as never, { onConflict: 'user_id,channel_id', ignoreDuplicates: true })
+
+    if (subscriptionError) {
+      console.error('[AddChannel] Failed to create user subscription:', subscriptionError)
+      throw new Error('Failed to create subscription')
+    }
 
     // 3. Add channel to selected groups
     const groupChannels = groupIds.map((groupId: string) => ({
@@ -92,9 +150,16 @@ export async function POST(request: NextRequest) {
       channel_id: channel.id,
     }))
 
-    await admin
+    const { error: membershipError } = await admin
       .from('group_channels')
       .upsert(groupChannels as never, { onConflict: 'group_id,channel_id', ignoreDuplicates: true })
+
+    if (membershipError) {
+      console.error('[AddChannel] Failed to add channel to groups:', membershipError)
+      throw new Error('Failed to add channel to groups')
+    }
+
+    const outcome: AddChannelOutcome = wasImportedByUser ? 'added_to_group' : 'imported_and_added'
 
     // 4. Import videos from the channel
     const { client: youtube, error: ytError } = await getYouTubeClient(userId)
@@ -103,6 +168,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         partial: true,
+        outcome,
         channelId: channel.id,
         videosImported: 0,
         error: 'Channel added but could not import videos (YouTube not connected). Please reconnect YouTube and sync manually.',
@@ -185,6 +251,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      outcome,
       channelId: channel.id,
       videosImported,
     })

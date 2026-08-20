@@ -1,9 +1,18 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { WaveformIcon } from './groups/EditGroupModal'
 
 type AddChannelPhase = 'input' | 'loading' | 'preview' | 'importing' | 'complete' | 'error'
+type SubscriptionState = 'new' | 'imported' | 'already_in_group'
+type AddChannelOutcome = 'already_in_group' | 'added_to_group' | 'imported_and_added'
+
+export type AddedChannelResult = {
+  id: string
+  youtube_id: string
+  title: string
+  thumbnail: string | null
+}
 
 type ChannelPreview = {
   channelId: string
@@ -13,6 +22,7 @@ type ChannelPreview = {
   videoCount: number
   description: string
   uploadsPlaylistId: string
+  subscriptionState: SubscriptionState
   hasWarning: boolean
   warningMessage: string | null
 }
@@ -27,8 +37,9 @@ type Group = {
 interface AddChannelModalProps {
   isOpen: boolean
   onClose: () => void
-  onComplete: () => void
+  onComplete: (channel: AddedChannelResult) => void
   groups: Group[]
+  targetGroup?: Group | null
 }
 
 export default function AddChannelModal({
@@ -36,29 +47,47 @@ export default function AddChannelModal({
   onClose,
   onComplete,
   groups,
+  targetGroup = null,
 }: AddChannelModalProps) {
   const [phase, setPhase] = useState<AddChannelPhase>('input')
   const [url, setUrl] = useState('')
   const [channelPreview, setChannelPreview] = useState<ChannelPreview | null>(null)
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(targetGroup ? [targetGroup.id] : [])
   const [videoLimit, setVideoLimit] = useState<number | null>(50) // null means no limit
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState({ current: 0, total: 0, message: '' })
+  const [outcome, setOutcome] = useState<AddChannelOutcome | null>(null)
+  const [completedChannel, setCompletedChannel] = useState<AddedChannelResult | null>(null)
 
   const resetModal = useCallback(() => {
     setPhase('input')
     setUrl('')
     setChannelPreview(null)
-    setSelectedGroupIds([])
+    setSelectedGroupIds(targetGroup ? [targetGroup.id] : [])
     setError(null)
     setProgress({ current: 0, total: 0, message: '' })
     setVideoLimit(50)
-  }, [])
+    setOutcome(null)
+    setCompletedChannel(null)
+  }, [targetGroup])
 
   const handleClose = useCallback(() => {
     resetModal()
     onClose()
   }, [resetModal, onClose])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    setSelectedGroupIds(targetGroup ? [targetGroup.id] : [])
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') handleClose()
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [isOpen, handleClose, targetGroup])
 
   const handleLookup = useCallback(async () => {
     if (!url.trim()) return
@@ -70,7 +99,7 @@ export default function AddChannelModal({
       const res = await fetch('/api/channels/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), groupId: targetGroup?.id }),
       })
 
       const data = await res.json()
@@ -88,10 +117,15 @@ export default function AddChannelModal({
       setError('Failed to look up channel')
       setPhase('error')
     }
-  }, [url])
+  }, [url, targetGroup])
 
   const handleAddChannel = useCallback(async () => {
     if (!channelPreview || selectedGroupIds.length === 0) return
+
+    if (channelPreview.subscriptionState === 'already_in_group') {
+      handleClose()
+      return
+    }
 
     setPhase('importing')
     setProgress({ current: 0, total: 100, message: 'Adding channel...' })
@@ -118,10 +152,31 @@ export default function AddChannelModal({
         return
       }
 
+      const nextOutcome = (data.outcome || 'imported_and_added') as AddChannelOutcome
+      setOutcome(nextOutcome)
+      setCompletedChannel({
+        id: data.channelId,
+        youtube_id: channelPreview.channelId,
+        title: channelPreview.title,
+        thumbnail: channelPreview.thumbnail || null,
+      })
+
+      const groupName = targetGroup?.name || 'the selected groups'
+      const videosImported = data.videosImported || 0
+      let message: string
+      if (nextOutcome === 'already_in_group') {
+        message = `${channelPreview.title} is already in ${groupName}. Nothing changed.`
+      } else if (nextOutcome === 'added_to_group') {
+        message = `${channelPreview.title} was added to ${groupName}. ${videosImported} videos synced.`
+      } else {
+        message = `${channelPreview.title} was imported and added to ${groupName}. ${videosImported} videos synced.`
+      }
+
+      if (data.partial && data.error) message = data.error
       setProgress({
-        current: data.videosImported,
-        total: data.videosImported,
-        message: `Imported ${data.videosImported} videos`,
+        current: videosImported,
+        total: videosImported,
+        message,
       })
       setPhase('complete')
     } catch (err) {
@@ -129,7 +184,7 @@ export default function AddChannelModal({
       setError('Failed to add channel')
       setPhase('error')
     }
-  }, [channelPreview, selectedGroupIds, videoLimit])
+  }, [channelPreview, selectedGroupIds, videoLimit, targetGroup, handleClose])
 
   const toggleGroup = useCallback((groupId: string) => {
     setSelectedGroupIds((prev) =>
@@ -142,7 +197,7 @@ export default function AddChannelModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
@@ -153,7 +208,10 @@ export default function AddChannelModal({
       <div className="relative w-full max-w-md rounded-2xl border isolate bg-[#ffffff] dark:bg-[#262017] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold">Add Channel</h2>
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Add channel to</p>
+            <h2 className="text-lg font-semibold truncate">{targetGroup?.name || 'Groups'}</h2>
+          </div>
           <button
             onClick={handleClose}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -224,6 +282,25 @@ export default function AddChannelModal({
               </div>
             </div>
 
+            <div className={`p-3 rounded-xl border ${
+              channelPreview.subscriptionState === 'already_in_group'
+                ? 'bg-muted/60 border-border'
+                : channelPreview.subscriptionState === 'imported'
+                ? 'bg-blue-500/10 border-blue-500/30'
+                : 'bg-accent/10 border-accent/30'
+            }`}>
+              <p className="text-sm font-medium">
+                {channelPreview.subscriptionState === 'already_in_group'
+                  ? `Already in ${targetGroup?.name || 'this group'}`
+                  : channelPreview.subscriptionState === 'imported'
+                  ? 'Already imported in Ben.Tube'
+                  : 'New to Ben.Tube'}
+              </p>
+              {channelPreview.subscriptionState === 'already_in_group' && (
+                <p className="text-xs text-muted-foreground mt-1">Nothing will change.</p>
+              )}
+            </div>
+
             {/* Warnings */}
             {channelPreview.hasWarning && channelPreview.warningMessage && (
               <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30">
@@ -242,6 +319,7 @@ export default function AddChannelModal({
             )}
 
             {/* Group Selection */}
+            {!targetGroup && (
             <div>
               <label className="block text-sm font-medium mb-2">
                 Add to Groups
@@ -270,11 +348,13 @@ export default function AddChannelModal({
                 </div>
               )}
             </div>
+            )}
 
             {/* Video Limit */}
+            {channelPreview.subscriptionState !== 'already_in_group' && (
             <div>
               <label className="block text-sm font-medium mb-2">
-                Number of videos to import
+                Videos to sync now
               </label>
               <select
                 value={videoLimit === null ? 'all' : videoLimit.toString()}
@@ -289,9 +369,10 @@ export default function AddChannelModal({
                 <option value="all">All videos</option>
               </select>
               <p className="text-xs text-muted-foreground mt-2">
-                Most recent videos will be imported first
+                The newest videos are synced first
               </p>
             </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
@@ -306,7 +387,11 @@ export default function AddChannelModal({
                 disabled={selectedGroupIds.length === 0}
                 className="flex-1 h-11 rounded-xl text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Channel
+                {channelPreview.subscriptionState === 'already_in_group'
+                  ? 'Done'
+                  : channelPreview.subscriptionState === 'imported'
+                  ? 'Add & Sync'
+                  : 'Import & Sync'}
               </button>
             </div>
           </div>
@@ -333,18 +418,29 @@ export default function AddChannelModal({
         {/* Phase: Complete */}
         {phase === 'complete' && (
           <div className="flex flex-col items-center justify-center py-12">
-            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
-              <CheckIcon className="w-8 h-8 text-green-500" />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+              outcome === 'already_in_group' ? 'bg-muted' : 'bg-green-500/20'
+            }`}>
+              {outcome === 'already_in_group'
+                ? <InfoIcon className="w-8 h-8 text-muted-foreground" />
+                : <CheckIcon className="w-8 h-8 text-green-500" />}
             </div>
-            <h3 className="font-semibold mb-2">Channel Added!</h3>
+            <h3 className="font-semibold mb-2">
+              {outcome === 'already_in_group'
+                ? 'Already in this group'
+                : outcome === 'added_to_group'
+                ? 'Added to group'
+                : 'Imported and added'}
+            </h3>
             <p className="text-sm text-muted-foreground text-center mb-6">
               {progress.message}
             </p>
             <button
               onClick={() => {
-                onComplete()
+                if (completedChannel) onComplete(completedChannel)
                 handleClose()
               }}
+              disabled={!completedChannel}
               className="px-6 py-2.5 rounded-xl text-sm font-medium bg-accent text-white hover:bg-accent/90 transition-colors"
             >
               Done
@@ -387,6 +483,14 @@ function CheckIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  )
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 11v5m0-8h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )
 }

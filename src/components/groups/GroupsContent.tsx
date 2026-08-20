@@ -8,7 +8,7 @@ import { getInternalUserId } from '@/lib/supabase/get-user'
 import BottomNav from '../BottomNav'
 import GroupCard from './GroupCard'
 import EditGroupModal from './EditGroupModal'
-import AddChannelModal from '../AddChannelModal'
+import AddChannelModal, { type AddedChannelResult } from '../AddChannelModal'
 import AddPlaylistModal from '../AddPlaylistModal'
 import AddVideoModal from '../AddVideoModal'
 import ConfirmDialog from '../ConfirmDialog'
@@ -61,6 +61,8 @@ export default function GroupsContent() {
   const [showModal, setShowModal] = useState(false)
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
   const [showAddChannelModal, setShowAddChannelModal] = useState(false)
+  const [addChannelTargetGroup, setAddChannelTargetGroup] = useState<Group | null>(null)
+  const [addedChannel, setAddedChannel] = useState<AddedChannelResult | null>(null)
   const [showAddPlaylistModal, setShowAddPlaylistModal] = useState(false)
   const [showAddVideoModal, setShowAddVideoModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -272,6 +274,7 @@ export default function GroupsContent() {
   }
 
   const handleEditGroup = (group: Group) => {
+    setAddedChannel(null)
     setEditingGroup(group)
     setShowModal(true)
   }
@@ -364,6 +367,8 @@ export default function GroupsContent() {
           await fetchGroups()
           // Invalidate React Query cache so Feed page updates immediately
           queryClient.invalidateQueries({ queryKey: ['groups'] })
+        } else {
+          throw new Error('Failed to update group')
         }
       } else {
         const res = await fetch('/api/groups', {
@@ -376,12 +381,13 @@ export default function GroupsContent() {
           await fetchGroups()
           // Invalidate React Query cache so Feed page updates immediately
           queryClient.invalidateQueries({ queryKey: ['groups'] })
+        } else {
+          throw new Error('Failed to create group')
         }
       }
-      setShowModal(false)
-      setEditingGroup(null)
     } catch (error) {
       console.error('Failed to save group:', error)
+      throw error
     }
   }
 
@@ -545,7 +551,10 @@ export default function GroupsContent() {
             <h3 className="text-sm font-medium">Add Content</h3>
             <div className="space-y-1.5">
               <button
-                onClick={() => setShowAddChannelModal(true)}
+                onClick={() => {
+                  setAddChannelTargetGroup(null)
+                  setShowAddChannelModal(true)
+                }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium border hover:bg-muted transition-colors text-left"
               >
                 <ChannelIcon className="w-4 h-4 text-muted-foreground" />
@@ -617,18 +626,30 @@ export default function GroupsContent() {
           }}
           onSave={handleSaveGroup}
           onSaveChannels={handleChannelsSaved}
+          onAddChannel={editingGroup ? () => {
+            setAddChannelTargetGroup(editingGroup)
+            setShowAddChannelModal(true)
+          } : undefined}
+          addedChannel={addedChannel}
+          isChildModalOpen={showAddChannelModal && !!addChannelTargetGroup}
         />
       )}
 
       {/* Add Channel Modal */}
       <AddChannelModal
         isOpen={showAddChannelModal}
-        onClose={() => setShowAddChannelModal(false)}
-        onComplete={() => {
+        onClose={() => {
           setShowAddChannelModal(false)
+          setAddChannelTargetGroup(null)
+        }}
+        onComplete={(channel) => {
+          if (addChannelTargetGroup) setAddedChannel(channel)
+          setShowAddChannelModal(false)
+          setAddChannelTargetGroup(null)
           fetchGroups()
         }}
         groups={groups}
+        targetGroup={addChannelTargetGroup}
       />
 
       {/* Add Playlist Modal */}

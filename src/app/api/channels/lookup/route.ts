@@ -4,6 +4,8 @@ import { getInternalUserId } from '@/lib/supabase/get-user'
 import { getYouTubeClient } from '@/lib/youtube/client'
 import { NextRequest, NextResponse } from 'next/server'
 
+type SubscriptionState = 'new' | 'imported' | 'already_in_group'
+
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
   const admin = createAdminClient()
@@ -13,9 +15,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { url } = await request.json()
+  const { url, groupId } = await request.json()
   if (!url) {
     return NextResponse.json({ error: 'URL is required' }, { status: 400 })
+  }
+
+  if (groupId) {
+    const { data: group } = await admin
+      .from('channel_groups')
+      .select('id')
+      .eq('id', groupId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (!group) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 })
+    }
   }
 
   // Extract channel identifier from various URL formats
@@ -61,26 +76,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user already has this channel
-    const { data: existingChannelData } = await admin
+    // Check the user's subscription and the selected group's membership without
+    // rejecting existing channels. The caller uses this to show one of the
+    // three supported outcomes before committing the add.
+    const { data: existingChannelData, error: existingChannelError } = await admin
       .from('channels')
       .select('id, youtube_id')
       .eq('youtube_id', channelId)
-      .single()
+      .maybeSingle()
+
+    if (existingChannelError) {
+      console.error('[ChannelLookup] Failed to check existing channel:', existingChannelError)
+      return NextResponse.json({ error: 'Failed to check channel' }, { status: 500 })
+    }
 
     const existingChannel = existingChannelData as { id: string; youtube_id: string } | null
+    let subscriptionState: SubscriptionState = 'new'
 
     if (existingChannel) {
-      // Check if user already subscribed
-      const { data: userSub } = await admin
+      const { data: userSub, error: userSubError } = await admin
         .from('user_subscriptions')
-        .select('id')
+        .select('channel_id')
         .eq('user_id', userId)
         .eq('channel_id', existingChannel.id)
-        .single()
+        .maybeSingle()
+
+      if (userSubError) {
+        console.error('[ChannelLookup] Failed to check user subscription:', userSubError)
+        return NextResponse.json({ error: 'Failed to check subscription' }, { status: 500 })
+      }
 
       if (userSub) {
-        return NextResponse.json({ error: 'Channel already exists' }, { status: 409 })
+        subscriptionState = 'imported'
+
+        if (groupId) {
+          const { data: membership, error: membershipError } = await admin
+            .from('group_channels')
+            .select('group_id')
+            .eq('group_id', groupId)
+            .eq('channel_id', existingChannel.id)
+            .maybeSingle()
+
+          if (membershipError) {
+            console.error('[ChannelLookup] Failed to check group membership:', membershipError)
+            return NextResponse.json({ error: 'Failed to check group membership' }, { status: 500 })
+          }
+
+          if (membership) subscriptionState = 'already_in_group'
+        }
       }
     }
 
@@ -105,6 +148,7 @@ export async function POST(request: NextRequest) {
       videoCount,
       description: channel.snippet?.description?.substring(0, 200),
       uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads,
+      subscriptionState,
       hasWarning: videoCount > 5000,
       warningMessage: videoCount > 5000
         ? `This channel has ${videoCount.toLocaleString()} videos. Importing all videos will use significant API quota.`

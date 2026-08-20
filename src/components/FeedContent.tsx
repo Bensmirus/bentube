@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { getInternalUserId } from '@/lib/supabase/get-user'
 import VideoCard, { type FeedVideo } from './VideoCard'
 import VideoListItem from './VideoListItem'
-import { WaveformIcon } from './groups/EditGroupModal'
+import EditGroupModal, { WaveformIcon } from './groups/EditGroupModal'
+import AddChannelModal, { type AddedChannelResult } from './AddChannelModal'
 import BottomNav from './BottomNav'
 import CreateGroupModal from './CreateGroupModal'
 import FirstTimeImportModal from './FirstTimeImportModal'
@@ -55,6 +56,9 @@ export default function FeedContent() {
   const [deferredSearchQuery, setDeferredSearchQuery] = useState('')
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showGroupEditor, setShowGroupEditor] = useState(false)
+  const [showGroupAddChannel, setShowGroupAddChannel] = useState(false)
+  const [addedGroupChannel, setAddedGroupChannel] = useState<AddedChannelResult | null>(null)
   const [hasCheckedImport, setHasCheckedImport] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('feed')
   const [showInProgress, setShowInProgress] = useState(false)
@@ -592,6 +596,34 @@ export default function FeedContent() {
     }
   }, [isSyncing, selectedGroupId, queryClient])
 
+  const handleSaveSelectedGroup = useCallback(async (data: { name: string; icon: string; color: string }) => {
+    if (!selectedGroupId) return
+
+    const res = await fetch(`/api/groups/${selectedGroupId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to update group')
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['groups'] })
+  }, [selectedGroupId, queryClient])
+
+  const handleGroupChannelsSaved = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['groups'] })
+    queryClient.invalidateQueries({ queryKey: ['infiniteFeed'] })
+  }, [queryClient])
+
+  const handleGroupChannelAdded = useCallback((channel: AddedChannelResult) => {
+    setShowGroupAddChannel(false)
+    setAddedGroupChannel(channel)
+    queryClient.invalidateQueries({ queryKey: ['groups'] })
+    queryClient.invalidateQueries({ queryKey: ['infiniteFeed'] })
+  }, [queryClient])
+
   return (
     <WatchProgressProvider userId={userId || undefined}>
       <div className="min-h-screen bg-background relative">
@@ -611,6 +643,31 @@ export default function FeedContent() {
           onClose={() => setShowImportModal(false)}
           onComplete={() => setShowImportModal(false)}
           onSkip={() => setShowImportModal(false)}
+        />
+
+        {/* Selected group subscription editor */}
+        {showGroupEditor && selectedGroup && (
+          <EditGroupModal
+            group={selectedGroup}
+            onClose={() => {
+              setShowGroupEditor(false)
+              setShowGroupAddChannel(false)
+              setAddedGroupChannel(null)
+            }}
+            onSave={handleSaveSelectedGroup}
+            onSaveChannels={handleGroupChannelsSaved}
+            onAddChannel={() => setShowGroupAddChannel(true)}
+            addedChannel={addedGroupChannel}
+            isChildModalOpen={showGroupAddChannel}
+          />
+        )}
+
+        <AddChannelModal
+          isOpen={showGroupAddChannel && !!selectedGroup}
+          onClose={() => setShowGroupAddChannel(false)}
+          onComplete={handleGroupChannelAdded}
+          groups={groups}
+          targetGroup={selectedGroup}
         />
 
         {/* Bulk Delete Confirm Dialog */}
@@ -906,6 +963,21 @@ export default function FeedContent() {
               </span>
             </button>
 
+            {/* Edit the selected group's subscriptions */}
+            {selectedGroup && (
+              <button
+                onClick={() => {
+                  setAddedGroupChannel(null)
+                  setShowGroupEditor(true)
+                }}
+                title={`Edit ${selectedGroup.name} subscriptions`}
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 md:px-3 py-1 md:py-1.5 rounded-full text-[11px] sm:text-xs md:text-sm whitespace-nowrap flex-shrink-0 transition-colors min-h-[32px] bg-muted text-muted-foreground hover:text-foreground"
+              >
+                <EditSubscriptionsIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
+
             {/* Spacer */}
             <div className="flex-1 min-w-2 sm:min-w-4" />
 
@@ -1162,3 +1234,10 @@ function SyncIcon({ className }: { className?: string }) {
   )
 }
 
+function EditSubscriptionsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.6-9.4a2.1 2.1 0 013 3L12 15l-4 1 1-4 8.4-8.4z" />
+    </svg>
+  )
+}
