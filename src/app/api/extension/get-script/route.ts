@@ -4,12 +4,12 @@ import { generateApiKey, saveApiKeyHash } from '@/lib/auth/api-key'
 
 export const dynamic = 'force-dynamic'
 
-// v5.2.0 script template - hide button in fullscreen mode
+// v6.0.0 script template - adds "Mes catégories" to YouTube's left panel
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      5.2.0
-// @description  Add YouTube channels to your BenTube groups directly from YouTube
+// @version      6.0.0
+// @description  Add YouTube channels to your BenTube groups and browse your categories directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
 // @grant        GM_xmlhttpRequest
@@ -941,7 +941,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v5.2.0');
+      console.log('[BenTube] Initialized v6.0.0');
     }
 
     onNavigate() {
@@ -996,6 +996,299 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   }
 
   // ============================================
+  // Mes catégories (left panel + category view)
+  // ============================================
+
+  const CAT_CSS = [
+    'html { --bt-fg: #0f0f0f; --bt-fg2: #606060; --bt-line: rgba(0,0,0,.1); --bt-hover: rgba(0,0,0,.06); } html[dark] { --bt-fg: #f1f1f1; --bt-fg2: #aaaaaa; --bt-line: rgba(255,255,255,.2); --bt-hover: rgba(255,255,255,.1); }',
+    '#bt-cats { margin: 0 12px; padding: 12px 0; border-bottom: 1px solid var(--bt-line); font-family: Roboto, Arial, sans-serif; }',
+    '#bt-cats .bt-cats-title { font-size: 17px; font-weight: 700; color: var(--bt-fg); padding: 6px 12px 8px; }',
+    '#bt-cats .bt-cat { display: flex; align-items: center; gap: 16px; width: 100%; padding: 10px 12px; margin: 0; border: 0; border-radius: 10px; background: transparent; color: var(--bt-fg); font-size: 17px; font-family: inherit; text-align: left; cursor: pointer; }',
+    '#bt-cats .bt-cat:hover { background: var(--bt-hover); }',
+    '#bt-cats .bt-cat.bt-on { background: var(--bt-c); color: #111; font-weight: 700; }',
+    '#bt-cats .bt-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--bt-c); margin: 0 5px; }',
+    '#bt-cats .bt-cat.bt-on .bt-dot { background: #111; }',
+    '#bt-cats .bt-emoji { flex: none; width: 24px; text-align: center; font-size: 18px; }',
+    '#bt-cats .bt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+    '#bt-cats .bt-msg { font-size: 14px; color: var(--bt-fg2); padding: 6px 12px; }',
+
+    '#bt-view { display: none; }',
+    'html.bt-active #bt-view { display: block; }',
+    'html.bt-active ytd-page-manager#page-manager > *:not(#bt-view) { display: none !important; }',
+    'html.bt-active ytd-app #frosted-glass { display: none !important; }',
+    '#bt-view { box-sizing: border-box; flex: 1 1 auto; width: 100%; padding: 28px 24px 80px; margin: 0; font-family: Roboto, Arial, sans-serif; color: var(--bt-fg); }',
+    '#bt-view .bt-head { display: flex; align-items: center; gap: 18px; margin: 0 0 6px; }',
+    '#bt-view .bt-head .bt-big-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--bt-c); }',
+    '#bt-view .bt-head h1 { margin: 0; font-size: 40px; font-weight: 700; line-height: 1.15; }',
+    '#bt-view .bt-status { font-size: 14px; color: var(--bt-fg2); margin: 0 0 26px 40px; min-height: 18px; }',
+    '#bt-view .bt-grid { display: grid; gap: 34px 18px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }',
+    '#bt-view .bt-card { display: block; color: inherit; text-decoration: none; }',
+    '#bt-view .bt-thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--bt-hover); }',
+    '#bt-view .bt-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }',
+    '#bt-view .bt-card.bt-watched .bt-thumb img { opacity: .45; }',
+    '#bt-view .bt-dur { position: absolute; right: 8px; bottom: 9px; background: rgba(0,0,0,.82); color: #fff; font-size: 13px; font-weight: 600; padding: 3px 6px; border-radius: 6px; }',
+    '#bt-view .bt-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.3); }',
+    '#bt-view .bt-prog i { display: block; height: 100%; background: #ff0033; }',
+    '#bt-view .bt-meta { display: flex; gap: 12px; margin-top: 12px; }',
+    '#bt-view .bt-av { flex: none; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--bt-hover); }',
+    '#bt-view .bt-title { font-size: 17px; font-weight: 600; line-height: 1.35; margin: 0 0 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }',
+    '#bt-view .bt-sub { font-size: 15px; color: var(--bt-fg2); line-height: 1.45; }',
+    '#bt-view .bt-more { height: 1px; }',
+    '#bt-view .bt-empty { font-size: 18px; color: var(--bt-fg2); padding: 60px 0; text-align: center; }'
+  ].join(' ');
+
+  function btEl(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+
+  function btAgo(iso) {
+    if (!iso) return '';
+    const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    const units = [[31536000, 'an', 'ans'], [2592000, 'mois', 'mois'], [604800, 'semaine', 'semaines'], [86400, 'jour', 'jours'], [3600, 'heure', 'heures'], [60, 'minute', 'minutes']];
+    for (const u of units) {
+      const n = Math.floor(s / u[0]);
+      if (n >= 1) return 'il y a ' + n + ' ' + (n > 1 ? u[2] : u[1]);
+    }
+    return "à l'instant";
+  }
+
+  function btDuration(v) {
+    if (v.durationSeconds) {
+      const t = v.durationSeconds, h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+      const pad = (n) => (n < 10 ? '0' : '') + n;
+      return h ? h + ':' + pad(m) + ':' + pad(sec) : m + ':' + pad(sec);
+    }
+    return v.duration || '';
+  }
+
+  class BenTubeCategories {
+    constructor() {
+      this.groups = null;
+      this.message = '';
+      this.active = null;
+      this.offset = 0;
+      this.hasMore = false;
+      this.loading = false;
+      this.loadToken = 0;
+      this.section = null;
+      this.view = null;
+      this.observer = null;
+    }
+
+    async init() {
+      const style = document.createElement('style');
+      style.textContent = CAT_CSS;
+      (document.head || document.documentElement).appendChild(style);
+
+      // Leave the category view as soon as YouTube navigates somewhere
+      document.addEventListener('yt-navigate-start', () => this.close());
+      window.addEventListener('popstate', () => this.close());
+      document.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t && t.closest && t.closest('ytd-guide-entry-renderer, ytd-mini-guide-entry-renderer, ytd-topbar-logo-renderer, #logo')) {
+          this.close();
+        }
+      }, true);
+
+      setInterval(() => this.ensureSection(), 1000);
+      this.ensureSection();
+
+      const res = await apiRequest('/api/extension/groups');
+      if (res && res.success) {
+        this.groups = res.data || [];
+        this.message = this.groups.length ? '' : 'Aucune catégorie dans BenTube';
+      } else {
+        this.groups = [];
+        this.message = res && res.needsSetup ? 'Clé BenTube manquante' : 'BenTube injoignable';
+        console.warn('[BenTube] Categories:', res && res.error);
+      }
+      this.renderSection();
+    }
+
+    ensureSection() {
+      const sections = document.querySelector('ytd-guide-renderer #sections');
+      if (!sections) return;
+      if (this.section && sections.contains(this.section)) return;
+      if (!this.section) {
+        this.section = btEl('div');
+        this.section.id = 'bt-cats';
+        this.renderSection();
+      }
+      const first = sections.querySelector('ytd-guide-section-renderer');
+      if (first) first.after(this.section);
+      else sections.prepend(this.section);
+    }
+
+    renderSection() {
+      if (!this.section) return;
+      this.section.replaceChildren();
+      this.section.appendChild(btEl('div', 'bt-cats-title', 'Mes catégories'));
+      if (this.groups === null) {
+        this.section.appendChild(btEl('div', 'bt-msg', 'Chargement…'));
+        return;
+      }
+      if (this.message) {
+        this.section.appendChild(btEl('div', 'bt-msg', this.message));
+      }
+      for (const g of this.groups) {
+        const b = btEl('button', 'bt-cat' + (this.active && this.active.id === g.id ? ' bt-on' : ''));
+        b.type = 'button';
+        b.style.setProperty('--bt-c', sanitizeColor(g.color, '#9aa0a6'));
+        if (g.icon && g.icon !== 'waveform' && isEmoji(g.icon)) b.appendChild(btEl('span', 'bt-emoji', g.icon));
+        else b.appendChild(btEl('span', 'bt-dot'));
+        b.appendChild(btEl('span', 'bt-name', g.name));
+        b.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.open(g);
+        });
+        this.section.appendChild(b);
+      }
+    }
+
+    ensureView() {
+      const pm = document.querySelector('ytd-page-manager#page-manager') || document.querySelector('ytd-page-manager');
+      if (!pm) return false;
+      if (!this.view) {
+        this.view = btEl('div');
+        this.view.id = 'bt-view';
+      }
+      if (this.view.parentNode !== pm) pm.appendChild(this.view);
+      return true;
+    }
+
+    open(group) {
+      if (!this.ensureView()) return;
+
+      // Stop a video playing underneath
+      const video = document.querySelector('video');
+      if (video && !video.paused) video.pause();
+
+      // On pages where the left panel floats over the content (watch page), close it
+      const app = document.querySelector('ytd-app');
+      const drawer = document.querySelector('tp-yt-app-drawer#guide');
+      if (app && drawer && drawer.hasAttribute('opened') && !app.hasAttribute('guide-persistent-and-visible')) {
+        const gb = document.querySelector('#guide-button button, #guide-button');
+        if (gb) gb.click();
+      }
+
+      this.active = group;
+      this.offset = 0;
+      this.hasMore = true;
+      this.loadToken++;
+      this.renderSection();
+
+      const color = sanitizeColor(group.color, '#9aa0a6');
+      this.view.replaceChildren();
+      this.view.style.setProperty('--bt-c', color);
+
+      const head = btEl('div', 'bt-head');
+      head.appendChild(btEl('span', 'bt-big-dot'));
+      head.appendChild(btEl('h1', null, group.name));
+      this.statusEl = btEl('div', 'bt-status', 'Chargement…');
+      this.grid = btEl('div', 'bt-grid');
+      this.sentinel = btEl('div', 'bt-more');
+      this.view.append(head, this.statusEl, this.grid, this.sentinel);
+
+      document.documentElement.classList.add('bt-active');
+      window.scrollTo(0, 0);
+
+      if (this.observer) this.observer.disconnect();
+      this.observer = new IntersectionObserver((entries) => {
+        if (entries.some((en) => en.isIntersecting)) this.loadMore();
+      }, { rootMargin: '800px' });
+      this.observer.observe(this.sentinel);
+      this.count = 0;
+      this.loadMore();
+    }
+
+    async loadMore() {
+      if (!this.active || this.loading || !this.hasMore) return;
+      this.loading = true;
+      const token = this.loadToken;
+      const res = await apiRequest('/api/extension/feed?group_id=' + encodeURIComponent(this.active.id) + '&offset=' + this.offset + '&limit=48');
+      this.loading = false;
+      if (token !== this.loadToken) return; // user switched category meanwhile
+
+      if (!res || !res.success) {
+        this.hasMore = false;
+        this.statusEl.textContent = 'Erreur : ' + ((res && res.error) || 'inconnue');
+        return;
+      }
+      const d = res.data;
+      this.hasMore = d.hasMore;
+      this.offset = d.nextOffset;
+      for (const v of d.videos) this.grid.appendChild(this.card(v));
+      this.count += d.videos.length;
+
+      if (!this.count) {
+        this.statusEl.textContent = '';
+        this.grid.replaceWith(btEl('div', 'bt-empty', 'Aucune vidéo dans cette catégorie'));
+        return;
+      }
+      this.statusEl.textContent = this.count + (this.hasMore ? '+' : '') + ' vidéos';
+
+      // Sentinel still visible (big screen): keep loading
+      if (this.hasMore) {
+        const r = this.sentinel.getBoundingClientRect();
+        if (r.top < window.innerHeight + 800) this.loadMore();
+      }
+    }
+
+    card(v) {
+      const a = btEl('a', 'bt-card' + (v.watched ? ' bt-watched' : ''));
+      a.href = '/watch?v=' + encodeURIComponent(v.youtubeId);
+
+      const thumb = btEl('div', 'bt-thumb');
+      const img = btEl('img');
+      img.loading = 'lazy';
+      img.alt = '';
+      img.src = v.thumbnail || ('https://i.ytimg.com/vi/' + encodeURIComponent(v.youtubeId) + '/mqdefault.jpg');
+      thumb.appendChild(img);
+      const dur = btDuration(v);
+      if (dur) thumb.appendChild(btEl('span', 'bt-dur', dur));
+      let p = v.progress || 0;
+      if (p > 0 && p <= 1) p = p * 100;
+      if (p > 0 && !v.watched) {
+        const bar = btEl('span', 'bt-prog');
+        const fill = btEl('i');
+        fill.style.width = Math.min(100, p) + '%';
+        bar.appendChild(fill);
+        thumb.appendChild(bar);
+      }
+      a.appendChild(thumb);
+
+      const meta = btEl('div', 'bt-meta');
+      const av = btEl('img', 'bt-av');
+      av.alt = '';
+      av.loading = 'lazy';
+      if (v.channelThumbnail) av.src = v.channelThumbnail;
+      meta.appendChild(av);
+      const txt = btEl('div');
+      txt.appendChild(btEl('div', 'bt-title', v.title));
+      const sub = btEl('div', 'bt-sub', v.channelTitle || '');
+      sub.appendChild(document.createElement('br'));
+      sub.appendChild(document.createTextNode(btAgo(v.publishedAt)));
+      txt.appendChild(sub);
+      meta.appendChild(txt);
+      a.appendChild(meta);
+      return a;
+    }
+
+    close() {
+      if (!this.active) return;
+      this.active = null;
+      this.loadToken++;
+      if (this.observer) this.observer.disconnect();
+      document.documentElement.classList.remove('bt-active');
+      this.renderSection();
+    }
+  }
+
+  // ============================================
   // Menu Commands
   // ============================================
 
@@ -1029,6 +1322,8 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   } else {
     controller.init();
   }
+
+  new BenTubeCategories().init();
 
 })();`
 
