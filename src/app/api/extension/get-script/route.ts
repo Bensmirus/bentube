@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 const SCRIPT_TEMPLATE = `// ==UserScript==
 // @name         BenTube - Add to Groups
 // @namespace    https://ben-tube.com
-// @version      6.0.0
+// @version      6.0.1
 // @description  Add YouTube channels to your BenTube groups and browse your categories directly from YouTube
 // @author       BenTube
 // @match        https://www.youtube.com/*
@@ -16,6 +16,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
+// @grant        GM.xmlHttpRequest
 // @noframes
 // @connect      ben-tube.com
 // @run-at       document-end
@@ -478,7 +479,15 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
         return;
       }
 
-      GM_xmlhttpRequest({
+      const gmRequest = typeof GM_xmlhttpRequest === 'function'
+        ? GM_xmlhttpRequest
+        : (typeof GM !== 'undefined' && GM.xmlHttpRequest ? GM.xmlHttpRequest : null);
+      if (!gmRequest) {
+        resolve({ success: false, error: 'Userscript manager cannot make requests' });
+        return;
+      }
+
+      gmRequest({
         method: options.method || 'GET',
         url: CONFIG.serverUrl + endpoint,
         headers: {
@@ -941,7 +950,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       // Initial positioning
       this.tryPosition();
 
-      console.log('[BenTube] Initialized v6.0.0');
+      console.log('[BenTube] Initialized v6.0.1');
     }
 
     onNavigate() {
@@ -1292,6 +1301,7 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
   // Menu Commands
   // ============================================
 
+  if (typeof GM_registerMenuCommand === 'function') {
   GM_registerMenuCommand('Configure API Key', () => {
     const key = prompt('Enter your BenTube API key:', getApiKey());
     if (key !== null) {
@@ -1310,20 +1320,32 @@ const SCRIPT_TEMPLATE = `// ==UserScript==
       alert(\`Error: \${res.error}\`);
     }
   });
+  }
 
   // ============================================
   // Initialize
   // ============================================
 
-  const controller = new BenTubeController();
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => controller.init());
-  } else {
-    controller.init();
+  try {
+    new BenTubeCategories().init();
+  } catch (e) {
+    console.error('[BenTube] Categories failed to start:', e);
   }
 
-  new BenTubeCategories().init();
+  const controller = new BenTubeController();
+  const startController = () => {
+    try {
+      controller.init();
+    } catch (e) {
+      console.error('[BenTube] Button failed to start:', e);
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startController);
+  } else {
+    startController();
+  }
 
 })();`
 
